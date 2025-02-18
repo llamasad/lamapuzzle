@@ -1,0 +1,14 @@
+**/*.pem
+**/*.crt
+**/.env.*
+**/target/
+**/build/
+**/.metadata
+**/*.project
+**/*.settings
+**/*.classpath
+**/*.factorypath
+compose-*.yml
+compose-*.yml''
+keycloak/import/lamapuz-realm.json''
+build.sh

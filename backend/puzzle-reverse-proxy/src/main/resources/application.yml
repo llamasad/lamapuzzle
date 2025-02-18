@@ -1,0 +1,97 @@
+# Custom properties to ease configuration overrides
+# on command-line or IDE launch configurations
+scheme: http
+hostname: localhost
+reverse-proxy-port: 7080
+angular-port: 8081
+angular-prefix: /angular-ui
+# Update scheme if you enable SSL in angular.json
+angular-uri: http://${hostname}:${angular-port}${angular-prefix}
+vue-port: 4200
+vue-prefix: /vue-ui
+# Update scheme if you enable SSL in vite.config.ts
+vue-uri: http://${hostname}:${vue-port}${vue-prefix}
+react-port: 3000
+react-prefix: /react-ui
+react-uri: http://${hostname}:${react-port}${react-prefix}
+authorization-server-port: 8080
+authorization-server-prefix: /auth
+authorization-server-uri: ${scheme}://${hostname}:${authorization-server-port}${authorization-server-prefix}
+bff-port: 7081
+bff-prefix: /bff
+bff-uri: ${scheme}://${hostname}:${bff-port}
+
+server:
+  port: ${reverse-proxy-port}
+  ssl:
+    enabled: false
+
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      routes:
+        # SPAs assets
+        - id: angular-ui
+          uri: ${angular-uri}
+          predicates:
+            - Path=${angular-prefix}/**
+        - id: vue-ui
+          uri: ${vue-uri}
+          predicates:
+            - Path=${vue-prefix}/**
+        - id: react-ui
+          uri: ${react-uri}
+          predicates:
+            - Path=${react-prefix}/**
+
+        # Authorization-server
+        - id: authorization-server
+          uri: ${scheme}://${hostname}:${authorization-server-port}
+          predicates:
+            - Path=${authorization-server-prefix}/**
+
+        # Proxy BFF
+        - id: bff
+          uri: ${bff-uri}
+          predicates:
+            - Path=${bff-prefix}/**
+          filters:
+            - StripPrefix=1
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+    com.llamas.puzzle_reverse_proxy.RequestLoggingFilter: DEBUG
+    springframework:
+      boot: INFO
+      web: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: ssl
+server:
+  ssl:
+    enabled: true
+scheme: https
+authorization-server-port: 8443
+

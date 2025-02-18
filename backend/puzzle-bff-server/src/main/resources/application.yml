@@ -1,0 +1,135 @@
+
+scheme: http
+hostname: localhost
+reverse-proxy-port: 7080
+reverse-proxy-uri: ${scheme}://${hostname}:${reverse-proxy-port}
+authorization-server-prefix: /auth
+issuer:  ${reverse-proxy-uri}${authorization-server-prefix}/realms/lamapuz
+client-id: lamapuz-confidential
+client-secret: secret
+username-claim-json-path: $.preferred_username
+authorities-json-path: $.realm_access.roles
+bff-port: 7081
+bff-prefix: /bff
+resource-server-port: 7084
+audience: 
+
+server:
+  port: ${bff-port}
+  ssl:
+    enabled: false
+  servlet:
+    session:
+      timeout: 30m
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    gateway:
+      routes:
+      - id: bff
+        uri: ${scheme}://${hostname}:${resource-server-port}
+        predicates:
+        - Path=/api/**
+        filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - TokenRelay=
+        - SaveSession
+        - StripPrefix=1
+  security:
+    oauth2:
+      client:
+        provider:
+          lamapuz:
+            issuer-uri: ${issuer}
+        registration:
+          lamapuz:
+            provider: lamapuz
+            authorization-grant-type: authorization_code
+            client-id: ${client-id}
+            client-secret: ${client-secret}
+            scope: openid,profile,email,offline_access
+
+com:
+  c4-soft:
+    springaddons:
+      oidc:
+        ops:
+        - iss: ${issuer}
+          authorities:
+          - path: ${authorities-json-path}
+          aud: ${audience}
+        # SecurityFilterChain with oauth2Login() (sessions and CSRF protection enabled)
+        client:
+          client-uri: ${reverse-proxy-uri}${bff-prefix}
+          security-matchers:
+          - /auth/**
+          - /api/**
+          - /login/**
+          - /oauth2/**
+          - /logout/**
+          permit-all:
+          - /auth/**
+          - /api/**
+          - /login/**
+          - /oauth2/**
+          - /logout/connect/back-channel/lamapuz
+          post-logout-redirect-host: ${hostname}
+          csrf: cookie-accessible-from-js
+          oauth2-redirections:
+            rp-initiated-logout: ACCEPTED
+          back-channel-logout:
+            enabled: true
+            # internal-logout-uri: ${reverse-proxy-uri}${bff-prefix}/logout
+            # should work too,  but there is no reason to go through the reverse proxy for this internal call
+            internal-logout-uri: ${scheme}://localhost:${bff-port}/logout
+        # SecurityFilterChain with oauth2ResourceServer() (sessions and CSRF protection disabled)
+        resourceserver:
+          permit-all:
+          - /login-options
+          - /error
+          - /v3/api-docs/**
+          - /swagger-ui/**
+          - /actuator/health/readiness
+          - /actuator/health/liveness
+
+management:
+  endpoint:
+    session:
+      enabled: true
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: 
+        - '*'
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    com.c4-soft.springaddons.security.oidc: TRACE
+    org.springframework.security.oauth2.client.oidc.session: TRACE
+    org.springframework.security.web.server.session: TRACE
+    root: TRACE
+    org:
+      springframework:
+        boot: TRACE
+        security: TRACE
+    
+---
+spring:
+  config:
+    activate:
+      on-profile: ssl
+server:
+  ssl:
+    enabled: true
+scheme: https
+
