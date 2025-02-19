@@ -77,9 +77,7 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
     org.springframework.web: DEBUG
-    com.llamas.puzzle_reverse_proxy.RequestLoggingFilter: DEBUG
     springframework:
       boot: INFO
       web: INFO

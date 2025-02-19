@@ -27,16 +27,18 @@ spring:
     allow-bean-definition-overriding: true
   cloud:
     gateway:
+      httpclient:
+        wiretap: true # For debugging
       routes:
-      - id: bff
+      - id: resource-server
         uri: ${scheme}://${hostname}:${resource-server-port}
         predicates:
         - Path=/api/**
         filters:
-        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
         - TokenRelay=
-        - SaveSession
-        - StripPrefix=1
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - RewritePath=/api/(?<segment>.*), /$\{segment}
+  
   security:
     oauth2:
       client:
@@ -51,6 +53,8 @@ spring:
             client-secret: ${client-secret}
             scope: openid,profile,email,offline_access
 
+
+
 com:
   c4-soft:
     springaddons:
@@ -64,13 +68,11 @@ com:
         client:
           client-uri: ${reverse-proxy-uri}${bff-prefix}
           security-matchers:
-          - /auth/**
           - /api/**
           - /login/**
           - /oauth2/**
           - /logout/**
           permit-all:
-          - /auth/**
           - /api/**
           - /login/**
           - /oauth2/**
@@ -113,14 +115,12 @@ management:
       enabled: true
 
 logging:
+  org.springframework.cloud.gateway: DEBUG
   level:
-    com.c4-soft.springaddons.security.oidc: TRACE
-    org.springframework.security.oauth2.client.oidc.session: TRACE
-    org.springframework.security.web.server.session: TRACE
-    root: TRACE
+    root: DEBUG
     org:
       springframework:
-        boot: TRACE
+        boot: INFO
         security: TRACE
     
 ---
