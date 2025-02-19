@@ -26,7 +26,7 @@ Lama Puzzle offers a fun twist on classic sliding and rearrangement puzzles. You
 
 ### Core gameplay(Fly weight)
 
-![Alt text](flyweight-pattern.jpg)
+![Alt text](readme/flyweight-pattern.jpg)
 
 <!-- ## Features
 
