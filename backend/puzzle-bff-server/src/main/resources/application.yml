@@ -1,8 +1,8 @@
 
-scheme: http
-hostname: localhost
+scheme: https
+hostname: llamasad.dev
 reverse-proxy-port: 7080
-reverse-proxy-uri: ${scheme}://${hostname}:${reverse-proxy-port}
+reverse-proxy-uri: ${scheme}://${hostname}
 authorization-server-prefix: /auth
 issuer:  ${reverse-proxy-uri}${authorization-server-prefix}/realms/lamapuz
 client-id: lamapuz-confidential
@@ -26,18 +26,17 @@ spring:
   main:
     allow-bean-definition-overriding: true
   cloud:
-    gateway:
-      httpclient:
-        wiretap: true # For debugging
-      routes:
-      - id: resource-server
-        uri: ${scheme}://${hostname}:${resource-server-port}
-        predicates:
-        - Path=/api/**
-        filters:
-        - TokenRelay=
-        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
-        - RewritePath=/api/(?<segment>.*), /$\{segment}
+      gateway:
+        routes:
+        - id: bff
+          uri: http://localhost:${resource-server-port}
+          predicates:
+          - Path=/api/**
+          filters:
+          - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+          - TokenRelay=
+          - SaveSession
+          - StripPrefix=1
   
   security:
     oauth2:
