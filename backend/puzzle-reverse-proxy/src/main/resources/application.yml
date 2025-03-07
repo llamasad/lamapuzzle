@@ -11,7 +11,7 @@ vue-port: 4200
 vue-prefix: /vue-ui
 # Update scheme if you enable SSL in vite.config.ts
 vue-uri: http://${hostname}:${vue-port}${vue-prefix}
-react-port: 3000
+react-port: 4203
 react-prefix: /react-ui
 react-uri: http://${hostname}:${react-port}${react-prefix}
 authorization-server-port: 8080
@@ -25,7 +25,7 @@ server:
   port: ${reverse-proxy-port}
   ssl:
     enabled: false
-
+    
 spring:
   cloud:
     gateway:

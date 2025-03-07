@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: puzzle-websocket-server
+
+logging:
+  level:
+    root: DEBUG
