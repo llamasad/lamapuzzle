@@ -1,7 +1,11 @@
-package com.llamas.puzzle_websocket_server;
+package com.llamas.puzzle_websocket_server.service;
+
+import com.llamas.puzzle_websocket_server.model.StrokeDTO;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
+
+
 
 public class LobbyService {
     private final Sinks.Many<String> lobbySink;
@@ -10,7 +14,8 @@ public class LobbyService {
         this.lobbySink = lobbySink;
     }
 
-    public void publishEvent(String event) {
+    public void publishEvent(StrokeDTO event) {
+        System.out.println("Publishing event: " + event);
         lobbySink.tryEmitNext(event);
     }
 

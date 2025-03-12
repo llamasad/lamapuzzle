@@ -2,8 +2,13 @@ package com.llamas.puzzle_websocket_server;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+	WebMvcAutoConfiguration.class,
+	RedisAutoConfiguration.class})
+	
 public class PuzzleWebsocketServerApplication {
 
 	public static void main(String[] args) {

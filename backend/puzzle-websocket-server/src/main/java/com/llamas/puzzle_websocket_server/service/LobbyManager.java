@@ -1,4 +1,4 @@
-package com.llamas.puzzle_websocket_server;
+package com.llamas.puzzle_websocket_server.service;
 
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Sinks;

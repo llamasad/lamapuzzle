@@ -10,8 +10,9 @@ export default function Page() {
 
   useEffect(() => {
     // Create WebSocket connection.
-    ws.current = new WebSocket('ws://localhost:8080/event-emitter');
+    ws.current = new WebSocket('ws://localhost:8080/event-emitter/test');
     console.log('WebSocket created');
+
     // Connection opened
     ws.current.onopen = () => {
       console.log('WebSocket connected');
@@ -20,9 +21,20 @@ export default function Page() {
     // Listen for messages
     ws.current.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      console.log('Received message: ', message);
       if (message.type === 'DRAW') {
         setLines((prevLines) => [...prevLines, message.data]);
       }
+    };
+
+    // Connection closed
+    ws.current.onclose = (event) => {
+      console.log('WebSocket closed: ', event);
+    };
+
+    // Connection error
+    ws.current.onerror = (error) => {
+      console.error('WebSocket error: ', error);
     };
 
     // Clean up WebSocket connection on component unmount
@@ -42,6 +54,7 @@ export default function Page() {
     // Send new line to server
     if (ws.current) {
       ws.current.send(JSON.stringify({ type: 'DRAW', data: newLine }));
+      console.log('Sent new line: ', newLine);
     }
   };
 
@@ -59,6 +72,7 @@ export default function Page() {
     // Send updated line to server
     if (ws.current) {
       ws.current.send(JSON.stringify({ type: 'DRAW', data: lastLine }));
+      console.log('Sent updated line: ', lastLine);
     }
   };
 
@@ -105,4 +119,3 @@ export default function Page() {
     </div>
   );
 }
-

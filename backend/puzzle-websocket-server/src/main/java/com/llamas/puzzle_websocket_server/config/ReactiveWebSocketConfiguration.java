@@ -1,4 +1,4 @@
-package com.llamas.puzzle_websocket_server;
+package com.llamas.puzzle_websocket_server.config;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,8 +11,8 @@ import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.server.WebSocketService;
 import org.springframework.web.reactive.socket.server.support.HandshakeWebSocketService;
-import org.springframework.web.reactive.socket.server.upgrade.TomcatRequestUpgradeStrategy;
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
+import org.springframework.web.reactive.socket.server.upgrade.ReactorNettyRequestUpgradeStrategy;
 
 @Configuration
 public class ReactiveWebSocketConfiguration {
@@ -39,10 +39,8 @@ public class ReactiveWebSocketConfiguration {
 
     @Bean
     public WebSocketService webSocketService() {
-        TomcatRequestUpgradeStrategy tomcatRequestUpgradeStrategy = new TomcatRequestUpgradeStrategy();
-        tomcatRequestUpgradeStrategy.setMaxSessionIdleTimeout(10000L);
-        tomcatRequestUpgradeStrategy.setAsyncSendTimeout(10000L);
-        return new HandshakeWebSocketService(tomcatRequestUpgradeStrategy);
+        ReactorNettyRequestUpgradeStrategy reactorNettyRequestUpgradeStrategy = new ReactorNettyRequestUpgradeStrategy();
+        return new HandshakeWebSocketService(reactorNettyRequestUpgradeStrategy);
     }
 
     // @Bean
