@@ -4,13 +4,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StrokeDTO {
-    private String toolType;
-    private String color;
-    private List<Vector2D> position;
+public class User {
+    private String username;
+    private UserRole role;   
+    private boolean isAuthorized; 
+    private int score;
+    
 }

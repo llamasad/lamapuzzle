@@ -1,16 +1,28 @@
 package com.llamas.puzzle_websocket_server.model;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.Data;
-import lombok.AllArgsConstructor;
-
-@Data
 public class Vector2DDTO {
     private int[] vector= new int[2];
 
-    public Vector2DDTO(int x, int y) {
+
+    @JsonCreator
+    public Vector2DDTO(@JsonProperty("x") int x, @JsonProperty("y") int y) {
         this.vector[0] = x;
         this.vector[1] = y;
+    }
+
+    public Vector2DDTO(){}
+
+    public int getX() {
+        return this.vector[0];
+    }
+
+    public int getY() {
+        return this.vector[1];
+    }
+    public Vector2D toVector2D() {
+        return new Vector2D(this.vector[0], this.vector[1]);
     }
 }

@@ -2,12 +2,10 @@ package com.llamas.puzzle_websocket_server.service;
 
 import com.llamas.puzzle_websocket_server.model.DrawingUtilityKey;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
-import com.llamas.puzzle_websocket_server.flyweight.Pen;
-import com.llamas.puzzle_websocket_server.flyweight.Brush;
-import com.llamas.puzzle_websocket_server.flyweight.Eraser;
+import com.llamas.puzzle_websocket_server.flyweight.BrushConcrete;
+import com.llamas.puzzle_websocket_server.flyweight.EraserConcrete;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -17,11 +15,9 @@ public class DrawingUtilityFactory {
     private final Map<DrawingUtilityKey, DrawingUtility> flyweightCache = new HashMap<>();
     private final Map<String, Supplier<DrawingUtility>> drawingUtilityRegister = new HashMap<>();
 
-    @PostConstruct
-    private void init() {
-        registerDrawingUtility("Pen", Pen.class);
-        registerDrawingUtility("Brush", Brush.class);
-        registerDrawingUtility("Eraser", Eraser.class);
+    {
+        registerDrawingUtility("Brush", BrushConcrete.class);
+        registerDrawingUtility("Eraser", EraserConcrete.class);
     }
 
     public DrawingUtility getDrawingUtility(String type, String color, int thickness) {

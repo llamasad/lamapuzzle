@@ -1,14 +1,28 @@
 package com.llamas.puzzle_websocket_server.handler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.llamas.puzzle_websocket_server.models.StrokeDTO;
-import com.llamas.puzzle_websocket_server.service.LobbyManager;
-import com.llamas.puzzle_websocket_server.service.StrokeStackManager;
-import com.llamas.puzzle_websocket_server.service.DrawingUtilityFactory;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
-import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.WebSocketMessage;
+import org.springframework.web.reactive.socket.WebSocketSession;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
+import com.llamas.puzzle_websocket_server.model.Status;
+import com.llamas.puzzle_websocket_server.model.Stroke;
+import com.llamas.puzzle_websocket_server.model.Vector2D;
+import com.llamas.puzzle_websocket_server.model.Vector2DDTO;
+import com.llamas.puzzle_websocket_server.model.Vector2DDTOWithStatus;
+import com.llamas.puzzle_websocket_server.service.DrawingUtilityFactory;
+import com.llamas.puzzle_websocket_server.service.LobbyManager;
+import com.llamas.puzzle_websocket_server.service.LobbyService;
+import com.llamas.puzzle_websocket_server.service.StrokeStackManager;
+
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
@@ -19,6 +33,7 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
     private final DrawingUtilityFactory drawingUtilityFactory;
     private final LobbyManager lobbyManager;
     private final ObjectMapper objectMapper;
+    private final Map<String, List<Vector2D>> sessionTemporaryPoints = new HashMap<>();
 
     public ReactiveWebSocketHandler(StrokeStackManager strokeStackManager, DrawingUtilityFactory drawingUtilityFactory, LobbyManager lobbyManager, ObjectMapper objectMapper) {
         this.strokeStackManager = strokeStackManager;
@@ -34,9 +49,9 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         String lobbyId = path.substring(path.lastIndexOf('/') + 1);
         System.out.println("Lobby ID: " + lobbyId); 
         System.out.println("Path: " + path);
-        if (lobbyId == null) {
-            lobbyId = "default"; // fallback
-        }
+//        if (lobbyId == null) {
+//            lobbyId = "default"; // fallback
+//        }
 
         Sinks.Many<String> lobbySink = lobbyManager.getOrCreateLobby(lobbyId);
         LobbyService lobbyService = new LobbyService(lobbySink);
@@ -45,24 +60,20 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         System.out.println("Lobby Service: " + lobbyService);
         System.out.println("Session: " + session);
 
+        // Initialize temporary points list for this session
+        sessionTemporaryPoints.put(session.getId(), new ArrayList<>());
+
         // When a client sends a message, publish it to the appropriate lobby topic
         Mono<Void> receive = session.receive()
             .doOnSubscribe(s -> System.out.println("Subscribed to receive stream"))
             .map(WebSocketMessage::getPayloadAsText)
-            .map(payload -> {
+            .map(this::parsePayload)
+            .doOnNext(dto -> {
                 try {
-                    return objectMapper.readValue(payload, StrokeDTO.class);
-                } catch (Exception e) {
-                    throw new RuntimeException("Error parsing JSON to StrokeDTO", e);
+                    handleDto(session, dto, lobbyService,lobbyId);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
                 }
-            })
-            .doOnNext(strokeDTO -> {
-                // Process the StrokeDTO object
-                System.out.println("Received StrokeDTO: " + strokeDTO);
-                // Example: Add a stroke to the stack
-                // Stroke<DrawingUtility> stroke = convertToStroke(strokeDTO);
-                // strokeStackManager.getStrokeStackForUser(userId).addStroke(stroke);
-                lobbyService.publishEvent(strokeDTO);
             })
             .doOnError(error -> System.err.println("Error in receive: " + error.getMessage()))
             .doOnComplete(() -> System.out.println("Receive stream completed"))
@@ -79,7 +90,47 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
 
         return Mono.zip(send, receive)
             .doOnError(error -> System.err.println("Error in WebSocket handling: " + error.getMessage()))
-            .doOnTerminate(() -> System.out.println("WebSocket session terminated"))
+            .doOnTerminate(() -> {
+                System.out.println("WebSocket session terminated");
+                sessionTemporaryPoints.remove(session.getId());
+                //re
+            })
             .then();
     }
-} 
+
+    private Object parsePayload(String payload) {
+        System.out.println("Payload: " + payload);
+        try {
+            if (payload.contains("status")) {    
+                return objectMapper.readValue(payload, Vector2DDTOWithStatus.class);
+            } else {
+                return objectMapper.readValue(payload, Vector2DDTO.class);
+            }
+        } catch (Exception e) {
+            System.err.println("Error parsing JSON: " + e.getMessage());
+            // e.printStackTrace();
+            throw new RuntimeException("Error parsing JSON", e);        }
+    }
+
+    private void handleDto(WebSocketSession session, Object dto, LobbyService lobbyService, String lobbyId) throws JsonProcessingException {
+        List<Vector2D> temporaryPoints = sessionTemporaryPoints.get(session.getId());
+
+        if (dto instanceof Vector2DDTOWithStatus) {
+            Vector2DDTOWithStatus vector2DDTOWithStatus = (Vector2DDTOWithStatus) dto;
+            temporaryPoints.add(vector2DDTOWithStatus.toVector2D());
+
+            if (vector2DDTOWithStatus.getStatus() == Status.END) {
+                DrawingUtility drawingUtility = drawingUtilityFactory.getDrawingUtility(vector2DDTOWithStatus.getToolType(), vector2DDTOWithStatus.getColor(), vector2DDTOWithStatus.getThickness());
+                Stroke<DrawingUtility> stroke =(Stroke<DrawingUtility>) drawingUtility.draw(temporaryPoints);
+                strokeStackManager.getStrokeStackForRoom(lobbyId).addStroke(stroke);
+                temporaryPoints.clear(); 
+            }
+
+            lobbyService.publishEvent(objectMapper.writeValueAsString(vector2DDTOWithStatus));
+        } else if (dto instanceof Vector2DDTO) {
+            Vector2DDTO vector2DDTO = (Vector2DDTO) dto;
+            temporaryPoints.add(vector2DDTO.toVector2D());
+            lobbyService.publishEvent(objectMapper.writeValueAsString(vector2DDTO));
+        }
+    }
+}

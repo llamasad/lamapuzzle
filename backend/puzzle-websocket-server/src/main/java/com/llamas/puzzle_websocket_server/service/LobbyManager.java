@@ -1,9 +1,11 @@
 package com.llamas.puzzle_websocket_server.service;
 
-import org.springframework.stereotype.Component;
-import reactor.core.publisher.Sinks;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.stereotype.Component;
+
+import reactor.core.publisher.Sinks;
 
 @Component
 public class LobbyManager {
@@ -13,5 +15,12 @@ public class LobbyManager {
         return lobbyTopics.computeIfAbsent(lobbyId, id ->
                 Sinks.many().multicast().onBackpressureBuffer()
         );
+    }
+
+    public void removeLobby(String lobbyId) {
+        Sinks.Many<String> sink = lobbyTopics.remove(lobbyId);
+        if (sink != null) {
+            sink.tryEmitComplete();
+        }
     }
 }

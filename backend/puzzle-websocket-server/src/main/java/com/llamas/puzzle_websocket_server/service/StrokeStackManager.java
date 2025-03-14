@@ -7,13 +7,13 @@ import java.util.Map;
 
 @Service
 public class StrokeStackManager {
-    private final Map<String, StrokeStack> userStrokeStacks = new HashMap<>();
+    private final Map<String, StrokeStack> roomStrokeStacks = new HashMap<>();
 
-    public StrokeStack getStrokeStackForUser(String userId) {
-        return userStrokeStacks.computeIfAbsent(userId, k -> new StrokeStack());
+    public StrokeStack getStrokeStackForRoom(String roomId) {
+        return roomStrokeStacks.computeIfAbsent(roomId, k -> new StrokeStack());
     }
 
-    public void removeStrokeStackForUser(String userId) {
-        userStrokeStacks.remove(userId);
+    public void removeStrokeStackForRoom(String roomId) {
+        roomStrokeStacks.remove(roomId);
     }
 }

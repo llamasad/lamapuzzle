@@ -2,6 +2,7 @@ package com.llamas.puzzle_websocket_server.config;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.llamas.puzzle_websocket_server.handler.ReactiveWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
