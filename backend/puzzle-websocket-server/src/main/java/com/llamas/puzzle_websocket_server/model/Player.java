@@ -8,9 +8,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class Player {
+    private String sid;
     private String username;
-    private UserRole role;   
+    private PlayerRole role;   
     private boolean isAuthorized; 
     private int score;
     

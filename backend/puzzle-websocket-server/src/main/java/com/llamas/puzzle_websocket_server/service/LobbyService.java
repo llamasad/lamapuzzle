@@ -17,7 +17,7 @@ public class LobbyService {
     }
 
     public Flux<String> getLobbyEvents() {
-        System.out.println("Lobby subscribers: " + lobbySink.currentSubscriberCount());
+        
         return lobbySink.asFlux();
     }
 }

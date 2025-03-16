@@ -1,16 +1,14 @@
-package com.llamas.puzzle_websocket_server.service;
-
-import com.llamas.puzzle_websocket_server.model.DrawingUtilityKey;
-import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
-import com.llamas.puzzle_websocket_server.flyweight.BrushConcrete;
-import com.llamas.puzzle_websocket_server.flyweight.EraserConcrete;
-import org.springframework.stereotype.Component;
+package com.llamas.puzzle_websocket_server.flyweight;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-@Component
+import org.springframework.stereotype.Service;
+
+import com.llamas.puzzle_websocket_server.model.DrawingUtilityKey;
+
+@Service
 public class DrawingUtilityFactory {
     private final Map<DrawingUtilityKey, DrawingUtility> flyweightCache = new HashMap<>();
     private final Map<String, Supplier<DrawingUtility>> drawingUtilityRegister = new HashMap<>();
