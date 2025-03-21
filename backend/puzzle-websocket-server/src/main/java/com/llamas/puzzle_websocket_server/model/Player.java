@@ -14,5 +14,5 @@ public class Player {
     private PlayerRole role;   
     private boolean isAuthorized; 
     private int score;
-    
+    private boolean isAnswered;
 }

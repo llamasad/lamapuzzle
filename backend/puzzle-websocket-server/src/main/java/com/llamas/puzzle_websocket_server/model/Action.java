@@ -2,5 +2,9 @@ package com.llamas.puzzle_websocket_server.model;
 
 public enum Action {
     DRAW,
-    ROLECHANGE
+    CHATANDANSWER,
+    CHOOSEWORD,
+    STARTGAME,
+    JOINPUBLICLOBBY,
+    JOINPRIVATLOBBY,
 }

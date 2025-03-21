@@ -11,12 +11,19 @@ import com.llamas.puzzle_websocket_server.model.PlayerRole;
 
 @Component
 public class LobbyManager {
+    private final LobbyService lobbyService;
     private final Map<String, Lobby> lobbies = new ConcurrentHashMap<>();
-
+    private final Map<String,LobbyContext> lobbyContexts = new ConcurrentHashMap<>();
     public Lobby getOrCreateLobby(String lobbyId) {
         return lobbies.computeIfAbsent(lobbyId, id -> new Lobby(id));
     }
-
+    LobbyManager(LobbyService lobbyService) {
+        this.lobbyService = lobbyService;
+    }
+    public LobbyContext getOrCreateLobbyContext(String lobbyId) {
+        Lobby lobby=lobbies.get(lobbyId);
+        return lobbyContexts.computeIfAbsent(lobbyId, id -> new LobbyContext(lobby, lobbyService));
+    }
     public void removeLobby(String lobbyId) {
         Lobby lobby = lobbies.remove(lobbyId);
         if (lobby != null) {
@@ -34,7 +41,6 @@ public class LobbyManager {
             });
         }
     }
-
 
     public Lobby getLobby(String lobbyId) {
         return lobbies.get(lobbyId);

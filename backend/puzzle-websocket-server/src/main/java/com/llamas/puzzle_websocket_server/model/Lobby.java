@@ -1,33 +1,40 @@
 package com.llamas.puzzle_websocket_server.model;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.ArrayList;
 
 import lombok.Data;
+import main.java.com.llamas.puzzle_websocket_server.model.GameMode;
+import main.java.com.llamas.puzzle_websocket_server.model.Language;
+import main.java.com.llamas.puzzle_websocket_server.model.LobbySetting;
 import reactor.core.publisher.Sinks;
 
 @Data
-public class Lobby {
+public class Lobby extends LobbySetting{
     private final String id;
-    private final Sinks.Many<String> sink;
-    private final int maxPlayer;
-    private final int drawTime;
-    private final int workCount;
-    private final Language language;
-    private final GameMode gameMode;
+    private final Sinks.Many<String> sink= Sinks.many().multicast().onBackpressureBuffer();
+    private int currentRound= 0;
+    private boolean isGameOn = false;
     private final Map<String, Player> players = new HashMap<>();
-    public Lobby(String id, int maxPlayer, int drawTime, int workCount, Language language, GameMode gameMode) {
+    private final Queue<String> drawerQueue = new LinkedList<>();
+    private List<String> words;
+    private List<String> customWords;
+    private String currentWord;
+    private List<Vector2D> sessionTemporaryPoints= new ArrayList<>();
+
+
+    public Lobby(String id, int maxPlayer, int drawTime, int wordCount, int maxRound, Language language, GameMode gameMode, boolean isPrivate, int hints, int drawingTime, boolean isUseCustomWords) {  
+        super(maxPlayer, drawTime, wordCount, maxRound, language, gameMode, isPrivate, hints, isUseCustomWords);
         this.id = id;
-        this.sink = Sinks.many().multicast().onBackpressureBuffer();
-        this.maxPlayer = maxPlayer;
-        this.drawTime = drawTime;
-        this.workCount = workCount;
-        this.language = language;
-        this.gameMode = gameMode;
     }
 
-    public Lobby (String id) {
-        this(id, 8, 60, 3, Language.ENGLISH, GameMode.NORMAL);
+    //default lobby setting
+    public Lobby(String id) {
+        super(8, 60, 3, 3, Language.ENGLISH, GameMode.NORMAL, false, 2,false);
+        this.id = id;
     }
-
 }
