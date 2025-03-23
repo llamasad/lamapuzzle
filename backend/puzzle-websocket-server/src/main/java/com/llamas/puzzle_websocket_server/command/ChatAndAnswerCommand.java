@@ -5,6 +5,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.model.ChatDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import com.llamas.puzzle_websocket_server.model.Player;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.service.LobbyEvent;
@@ -35,7 +36,7 @@ public class ChatAndAnswerCommand implements Command<ChatDTO> {
             return Mono.empty();
         }
         String currentWord = lobbyManager.getLobby(lobbyId).getCurrentWord();
-        if (currentWord.equals(data.getMsg())&&!player.isAnswered() && lobby.isGameOn()) {
+        if (currentWord.equals(data.getMsg())&&!player.isAnswered() && lobby.getStatus().equals(LobbyStatus.IS_PLAYING)) {
             long answerTime = System.currentTimeMillis();
             long drawTime = lobby.getDrawTime();
             long roundStartTimes = lobbyManager.getOrCreateLobbyContext(lobbyId).getRoundStartTimes();
@@ -49,7 +50,7 @@ public class ChatAndAnswerCommand implements Command<ChatDTO> {
                 e.printStackTrace();
             }
         }
-        else if(!player.isAnswered() && lobby.isGameOn()){
+        else if(!player.isAnswered() && lobby.getStatus().equals(LobbyStatus.IS_PLAYING)){
         try {
             lobbyEvent.publishEvent(objectMapper.writeValueAsString(data));
             

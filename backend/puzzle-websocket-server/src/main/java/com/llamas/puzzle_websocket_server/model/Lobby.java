@@ -18,7 +18,7 @@ public class Lobby extends LobbySetting{
     private final String id;
     private final Sinks.Many<String> sink= Sinks.many().multicast().onBackpressureBuffer();
     private int currentRound= 0;
-    private boolean isGameOn = false;
+    private LobbyStatus status = LobbyStatus.PENDING_LOBBY;
     private final Map<String, Player> players = new HashMap<>();
     private final Queue<String> drawerQueue = new LinkedList<>();
     private List<String> words;

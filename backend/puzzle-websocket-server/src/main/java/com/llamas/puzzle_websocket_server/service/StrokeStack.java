@@ -1,9 +1,9 @@
 package com.llamas.puzzle_websocket_server.service;
 
-import com.llamas.puzzle_websocket_server.model.Stroke;
-import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
-
 import java.util.Stack;
+
+import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
+import com.llamas.puzzle_websocket_server.model.Stroke;
 
 public class StrokeStack {
     private Stack<Stroke<DrawingUtility>> undoStack = new Stack<>();
@@ -34,5 +34,10 @@ public class StrokeStack {
 
     public Stack<Stroke<DrawingUtility>> getRedoStack() {
         return redoStack;
+    }
+
+    public void clear() {
+        undoStack.clear();
+        redoStack.clear();
     }
 }

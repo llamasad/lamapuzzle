@@ -15,6 +15,7 @@ import com.llamas.puzzle_websocket_server.command.DrawingCommand;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtilityFactory;
 import com.llamas.puzzle_websocket_server.model.Action;
 import com.llamas.puzzle_websocket_server.model.ChatDTO;
+import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTO;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTOWithStatus;
@@ -43,51 +44,63 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        // Extract the lobby ID from the URI (e.g., /ws/{lobbyId})
         String path = session.getHandshakeInfo().getUri().getPath();
-        String lobbyId = path.substring(path.lastIndexOf('/') + 1);
-        System.out.println("Lobby ID: " + lobbyId); 
-        System.out.println("Path: " + path);
+        String suffix = path.substring(path.lastIndexOf('/') + 1);
+        final String lobbyId = suffix.isEmpty() ? lobbyManager.getPublicLobby().getId() : suffix;
     
-        LobbyEvent lobbyEvent = new LobbyEvent(lobbyManager.getOrCreateLobby(lobbyId).getSink());
-
-        System.out.println("Lobby Service: " + lobbyEvent);
-        System.out.println("Session: " + session);
+        Lobby lobby = lobbyManager.getLobby(lobbyId);
+    
+        if (lobby == null) {
+            return session.send(Mono.just(session.textMessage("{\"error\": \"Lobby not found: " + lobbyId + "\"}")))
+                .then(Mono.error(new IllegalArgumentException("Lobby not found: " + lobbyId)));
+        }
+    
+        LobbyEvent lobbyEvent = new LobbyEvent(lobby.getSink());
     
         Mono<Void> receive = session.receive()
             .doOnSubscribe(s -> System.out.println("Subscribed to receive stream"))
             .map(WebSocketMessage::getPayloadAsText)
             .flatMap(payload -> {
-                System.out.println("Received payload: " + payload);
-                Map<String, Object> actionAndData = extractActionAndData(payload);
-                Action action = Action.valueOf((String) actionAndData.get("action"));
-                Object data = actionAndData.get("data");
-                System.out.println("Action: " + action);
-                System.out.println("Data: " + data);
+                try {
+                    System.out.println("Received payload: " + payload);
+                    Map<String, Object> actionAndData = extractActionAndData(payload);
+                    Action action = Action.valueOf((String) actionAndData.get("action"));
+                    Object data = actionAndData.get("data");
     
-                Command<?> command = commandFactory.getCommand(action);
-                if (command instanceof ChatAndAnswerCommand) {
-                    ChatDTO chatDTO = objectMapper.convertValue(data, ChatDTO.class);
-                    return ((ChatAndAnswerCommand) command).execute(session, chatDTO, lobbyEvent,lobbyId);
-                } else if (command instanceof DrawingCommand) {
-                    if (data instanceof Map && ((Map<?, ?>) data).containsKey("status")) {
-                        Vector2DDTOWithStatus vector2DDTOWithStatus = objectMapper.convertValue(data, Vector2DDTOWithStatus.class);
-                        return ((DrawingCommand) command).execute(session, vector2DDTOWithStatus, lobbyEvent,lobbyId);
-                    } else {
-                        Vector2DDTO vector2DDTO = objectMapper.convertValue(data, Vector2DDTO.class);
-                        return ((DrawingCommand) command).execute(session, vector2DDTO, lobbyEvent,lobbyId);
+                    System.out.println("Action: " + action);
+                    System.out.println("Data: " + data);
+    
+                    Command<?> command = commandFactory.getCommand(action);
+                    if (command == null) {
+                        return sendError(session, "Unknown command type: " + action);
                     }
+    
+                    if (command instanceof ChatAndAnswerCommand) {
+                        ChatDTO chatDTO = objectMapper.convertValue(data, ChatDTO.class);
+                        return ((ChatAndAnswerCommand) command).execute(session, chatDTO, lobbyEvent, lobbyId);
+                    } else if (command instanceof DrawingCommand) {
+                        if (data instanceof Map && ((Map<?, ?>) data).containsKey("status")) {
+                            Vector2DDTOWithStatus vector2DDTOWithStatus = objectMapper.convertValue(data, Vector2DDTOWithStatus.class);
+                            return ((DrawingCommand) command).execute(session, vector2DDTOWithStatus, lobbyEvent, lobbyId);
+                        } else {
+                            Vector2DDTO vector2DDTO = objectMapper.convertValue(data, Vector2DDTO.class);
+                            return ((DrawingCommand) command).execute(session, vector2DDTO, lobbyEvent, lobbyId);
+                        }
+                    }
+                    return sendError(session, "Unhandled command type: " + action);
+                } catch (Exception e) {
+                    return sendError(session, "Error processing payload: " + e.getMessage());
                 }
-                return Mono.error(new IllegalArgumentException("Unknown command type"));
             })
             .doOnError(error -> System.err.println("Error in receive: " + error.getMessage()))
             .doOnComplete(() -> System.out.println("Receive stream completed"))
             .doOnCancel(() -> System.out.println("Receive stream cancelled"))
+            .onErrorResume(error -> sendError(session, "Unexpected error: " + error.getMessage()))
             .then();
     
         Mono<Void> send = session.send(
             lobbyEvent.getLobbyEvents()
-                .filter(msg -> !isDrawingEvent(msg) || !PlayerRole.DRAWER.equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole())) // Filter out drawing events for "draw" role
+                .filter(msg -> !isDrawingEvent(msg) || !PlayerRole.DRAWER.equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()))
                 .doOnSubscribe(s -> System.out.println("Subscribed to send stream"))
                 .doOnNext(msg -> System.out.println("Sending message: " + msg))
                 .doOnError(error -> System.err.println("Error in send: " + error.getMessage()))
@@ -102,16 +115,22 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
             })
             .then();
     }
-
+    
+    /**
+     * Sends an error message to the client and logs it.
+     */
+    private Mono<Void> sendError(WebSocketSession session, String errorMessage) {
+        System.err.println("Error: " + errorMessage);
+        return session.send(Mono.just(session.textMessage("{\"error\": \"" + errorMessage + "\"}"))).then();
+    }
+    
     // Clear when session is closed  
     public void removeSession(String sessionId, String lobbyId) {
         lobbyManager.getLobby(lobbyId).getSessionTemporaryPoints().clear();
         lobbyManager.removePlayer(lobbyId, sessionId);
-        
     }
 
     private boolean isDrawingEvent(String msg) {
-
         return msg.contains("drawing");
     }
 

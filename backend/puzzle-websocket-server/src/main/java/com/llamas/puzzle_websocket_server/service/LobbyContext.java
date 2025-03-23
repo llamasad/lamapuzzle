@@ -5,6 +5,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 
 import lombok.Data;
 import main.java.com.llamas.puzzle_websocket_server.service.LobbyService;
@@ -26,7 +27,7 @@ public class LobbyContext {
 
     // Method to start the next round
     public void startRound() {
-        lobby.setGameOn(true);
+        lobby.setStatus(LobbyStatus.IS_PLAYING);
         roundStartTimes = System.currentTimeMillis()/1000;
         lobby.setCurrentRound(lobby.getCurrentRound() + 1);
         lobby.getSink().tryEmitNext("Round " + lobby.getCurrentRound() + " started");
@@ -36,12 +37,12 @@ public class LobbyContext {
     // Method to schedule the end of the round
     private void scheduleEndOfRound() {
         scheduler.schedule(() -> {
-            lobbyService.refreshPlayers(lobby);
-            lobby.setGameOn(false);
+            lobbyService.refreshLobbyEachRound(lobby);
+            lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
             if (lobby.getCurrentRound() <lobby.getMaxRound()) {
                 lobbyService.emitWordBasedOnWordCount(lobby);
             } else {
-                
+                lobby.setStatus(LobbyStatus.FINISHED);
                 lobby.getSink().tryEmitNext("Game ended");
             }   
         }, lobby.getDrawTime(), TimeUnit.SECONDS);

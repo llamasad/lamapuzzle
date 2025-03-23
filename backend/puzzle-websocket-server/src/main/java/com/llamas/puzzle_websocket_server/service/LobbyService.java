@@ -17,8 +17,18 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class LobbyService { 
 
+    StrokeStackManager strokeStackManager;
+
+    LobbyService(){
+        this.strokeStackManager = new StrokeStackManager();
+    }
+
     public Player choosePlayer(Lobby lobby){
         Queue<String> drawers = lobby.getDrawerQueue();
+        if (drawers.isEmpty()) {
+            drawers.addAll(lobby.getPlayers().keySet());
+        }
+
         String drawerSid = drawers.poll();
         Player drawer = lobby.getPlayers().get(drawerSid);
         
@@ -70,11 +80,16 @@ public class LobbyService {
         }
     }
 
-    public void refreshPlayers(Lobby lobby) {
+    public void refreshLobbyEachRound(Lobby lobby) {
         for (Player player : lobby.getPlayers().values()) {
             player.setRole(PlayerRole.GUESSER);
             player.setAnswered(false);
         }
+        StrokeStack strokeStack =strokeStackManager.getStrokeStackForRoom(lobby.getId());
+        strokeStack.clear();
+        lobby.setCurrentWord(null);
+        lobby.getSessionTemporaryPoints().clear();
+
     }
 }
     

@@ -1,6 +1,7 @@
 package com.llamas.puzzle_websocket_server.service;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
@@ -17,6 +18,14 @@ public class LobbyManager {
     public Lobby getOrCreateLobby(String lobbyId) {
         return lobbies.computeIfAbsent(lobbyId, id -> new Lobby(id));
     }
+
+    public Lobby createPrivateLobby(String lobbyId) {
+        Lobby lobby = new Lobby(lobbyId);
+        lobby.setPrivate(true);
+        lobbies.put(lobbyId, lobby);
+        return lobby;
+    }
+
     LobbyManager(LobbyService lobbyService) {
         this.lobbyService = lobbyService;
     }
@@ -31,6 +40,23 @@ public class LobbyManager {
         }
     }
 
+    public Lobby getPublicLobby() {
+        Lobby maxLobby = null;
+        int maxPlayers = 0;
+        for (Lobby lobby : lobbies.values()) {
+            if (!lobby.isPrivate() && lobby.getPlayers().size() > maxPlayers) {
+            maxPlayers = lobby.getPlayers().size();
+            maxLobby = lobby;
+                if(maxPlayers==lobby.getPlayers().size() -1){
+                    break;
+                }
+            }
+        }
+        if (maxLobby != null) {
+            return maxLobby;
+        }
+        return getOrCreateLobby(UUID.randomUUID().toString());
+    }
 
     public void updatePlayerRole(String lobbyId, String playerId, PlayerRole newRole) {
         Lobby lobby = lobbies.get(lobbyId);
