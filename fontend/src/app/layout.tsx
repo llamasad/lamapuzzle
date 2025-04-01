@@ -24,10 +24,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body>
+        <div
+          className="min-h-screen w-screen bg-cover bg-center"
+          style={{
+            backgroundImage: "url('/background.png')",
+            backgroundSize: "25%", // Adjusted to make the image smaller
+            border: "none",
+          }}
+        >
+          {children}
+        </div>
       </body>
     </html>
   );

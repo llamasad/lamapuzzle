@@ -7,6 +7,8 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtilityFactory;
+import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.Status;
 import com.llamas.puzzle_websocket_server.model.Stroke;
@@ -35,9 +37,9 @@ public class DrawingCommand implements Command<Object> {
 
     @Override
     public Mono<Void> execute(WebSocketSession session, Object data, LobbyEvent lobbyEvent , String lobbyId) {
-
+        Lobby lobby = lobbyManager.getLobby(lobbyId);
         PlayerRole playerRole = lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole();        
-        if (!PlayerRole.DRAWER.equals(playerRole)) {
+        if (!PlayerRole.DRAWER.equals(playerRole)&&!lobby.getStatus().equals(LobbyStatus.IS_PLAYING)) {
             System.out.println("Player is not a DRAWER, ignoring command");
             return Mono.empty();
         }

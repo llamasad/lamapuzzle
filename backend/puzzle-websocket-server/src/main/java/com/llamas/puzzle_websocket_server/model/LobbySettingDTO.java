@@ -1,13 +1,9 @@
 package com.llamas.puzzle_websocket_server.model;
 
-import com.llamas.puzzle_websocket_server.model.Lobby;
-import com.llamas.puzzle_websocket_server.model.enums.GameMode;
-import com.llamas.puzzle_websocket_server.model.enums.Language;
-
-import lombok.Data;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import lombok.Data;
 
 
 @Data

@@ -9,13 +9,20 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.command.ChatAndAnswerCommand;
+import com.llamas.puzzle_websocket_server.command.ChooseWordCommand;
 import com.llamas.puzzle_websocket_server.command.Command;
 import com.llamas.puzzle_websocket_server.command.CommandFactory;
+import com.llamas.puzzle_websocket_server.command.CreatePrivateLobbyCommand;
 import com.llamas.puzzle_websocket_server.command.DrawingCommand;
+import com.llamas.puzzle_websocket_server.command.JoinPrivateLobbyCommand;
+import com.llamas.puzzle_websocket_server.command.JoinPublicLobbyCommand;
+import com.llamas.puzzle_websocket_server.command.StartGameCommand;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtilityFactory;
 import com.llamas.puzzle_websocket_server.model.Action;
 import com.llamas.puzzle_websocket_server.model.ChatDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbySettingDTO;
+import com.llamas.puzzle_websocket_server.model.PlayerDTO;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTO;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTOWithStatus;
@@ -46,8 +53,10 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession session) {
         String path = session.getHandshakeInfo().getUri().getPath();
         String suffix = path.substring(path.lastIndexOf('/') + 1);
-        final String lobbyId = suffix.isEmpty() ? lobbyManager.getPublicLobby().getId() : suffix;
-    
+        System.out.println("Path: " + path);
+        System.out.println("Suffix: " + suffix);
+        final String lobbyId = suffix.equals("publiclobby") ? lobbyManager.getPublicLobby().getId() : suffix;
+        System.out.println("Lobby ID: " + suffix=="publiclobby" );
         Lobby lobby = lobbyManager.getLobby(lobbyId);
     
         if (lobby == null) {
@@ -78,7 +87,23 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                     if (command instanceof ChatAndAnswerCommand) {
                         ChatDTO chatDTO = objectMapper.convertValue(data, ChatDTO.class);
                         return ((ChatAndAnswerCommand) command).execute(session, chatDTO, lobbyEvent, lobbyId);
-                    } else if (command instanceof DrawingCommand) {
+                    } else if (command instanceof ChooseWordCommand) {
+                        String word = (String) data;
+                        return ((ChooseWordCommand) command).execute(session, word, lobbyEvent, lobbyId);
+                    } else if (command instanceof CreatePrivateLobbyCommand) {
+                        PlayerDTO playerDTO = objectMapper.convertValue(data, PlayerDTO.class);
+                        return ((CreatePrivateLobbyCommand) command).execute(session, playerDTO, lobbyEvent, lobbyId);
+                    } else if (command instanceof JoinPublicLobbyCommand) {
+                        PlayerDTO playerDTO = objectMapper.convertValue(data, PlayerDTO.class);
+                        return ((JoinPublicLobbyCommand) command).execute(session, playerDTO, lobbyEvent, lobbyId);
+                    } else if (command instanceof JoinPrivateLobbyCommand) {
+                        PlayerDTO playerDTO = objectMapper.convertValue(data, PlayerDTO.class);
+                        return ((JoinPrivateLobbyCommand) command).execute(session, playerDTO, lobbyEvent, lobbyId);
+                    } else if (command instanceof StartGameCommand) {
+                        LobbySettingDTO lobbySettingDTO = objectMapper.convertValue(data, LobbySettingDTO.class);
+                        return ((StartGameCommand) command).execute(session, lobbySettingDTO, lobbyEvent, lobbyId);
+                    }
+                    else if (command instanceof DrawingCommand) {
                         if (data instanceof Map && ((Map<?, ?>) data).containsKey("status")) {
                             Vector2DDTOWithStatus vector2DDTOWithStatus = objectMapper.convertValue(data, Vector2DDTOWithStatus.class);
                             return ((DrawingCommand) command).execute(session, vector2DDTOWithStatus, lobbyEvent, lobbyId);
@@ -86,7 +111,7 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                             Vector2DDTO vector2DDTO = objectMapper.convertValue(data, Vector2DDTO.class);
                             return ((DrawingCommand) command).execute(session, vector2DDTO, lobbyEvent, lobbyId);
                         }
-                    }
+                    } 
                     return sendError(session, "Unhandled command type: " + action);
                 } catch (Exception e) {
                     return sendError(session, "Error processing payload: " + e.getMessage());

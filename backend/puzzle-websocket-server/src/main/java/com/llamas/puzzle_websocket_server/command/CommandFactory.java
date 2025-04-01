@@ -8,6 +8,7 @@ import com.llamas.puzzle_websocket_server.model.Action;
 import com.llamas.puzzle_websocket_server.service.LobbyManager;
 import com.llamas.puzzle_websocket_server.service.LobbyService;
 import com.llamas.puzzle_websocket_server.service.StrokeStackManager;
+import com.llamas.puzzle_websocket_server.service.WordService;
 
 @Service
 public class CommandFactory {
@@ -17,23 +18,33 @@ public class CommandFactory {
     private final StrokeStackManager strokeStackManager;
     private final ObjectMapper objectMapper;
     private final LobbyService lobbyService;
+    private final WordService wordService;
 
-    public CommandFactory(LobbyManager lobbyManager, DrawingUtilityFactory drawingUtilityFactory, StrokeStackManager strokeStackManager, ObjectMapper objectMapper, LobbyService lobbyService) {
+    public CommandFactory(LobbyManager lobbyManager, DrawingUtilityFactory drawingUtilityFactory, StrokeStackManager strokeStackManager, ObjectMapper objectMapper, LobbyService lobbyService, WordService wordService) {
         this.lobbyManager = lobbyManager;
         this.drawingUtilityFactory = drawingUtilityFactory;
         this.strokeStackManager = strokeStackManager;
         this.objectMapper = objectMapper;
         this.lobbyService = lobbyService;
+        this.wordService = wordService;
     }
 
     public Command<?> getCommand(Action action) {
         switch (action) {
-            case CHATANDANSWER:
+            case CHAT_AND_ANSWER:
                 return new ChatAndAnswerCommand(lobbyManager, objectMapper,lobbyService);
             case DRAW:
                 return new DrawingCommand(drawingUtilityFactory, strokeStackManager, objectMapper, lobbyManager);
-            case CHOOSEWORD:
+            case CHOOSE_WORD:
                 return new ChooseWordCommand(lobbyManager);
+            case CREATE_PRIVATE_LOBBY:
+                return new CreatePrivateLobbyCommand(lobbyManager);
+            case JOIN_PUBLIC_LOBBY:
+                return new JoinPublicLobbyCommand(lobbyManager, lobbyService);
+            case JOIN_PRIVATE_LOBBY:
+                return new JoinPrivateLobbyCommand(strokeStackManager, lobbyManager);
+            case START_GAME:
+                return new StartGameCommand(objectMapper,lobbyManager, lobbyService,wordService);
             default:
                 throw new IllegalArgumentException("Unknown action: " + action);
         }

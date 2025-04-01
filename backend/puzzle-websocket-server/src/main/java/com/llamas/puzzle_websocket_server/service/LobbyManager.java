@@ -41,6 +41,7 @@ public class LobbyManager {
     }
 
     public Lobby getPublicLobby() {
+        System.out.println("getPublicLobby");
         Lobby maxLobby = null;
         int maxPlayers = 0;
         for (Lobby lobby : lobbies.values()) {

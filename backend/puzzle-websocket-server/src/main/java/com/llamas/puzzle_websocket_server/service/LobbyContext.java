@@ -8,7 +8,6 @@ import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 
 import lombok.Data;
-import main.java.com.llamas.puzzle_websocket_server.service.LobbyService;
 
 @Data
 public class LobbyContext {

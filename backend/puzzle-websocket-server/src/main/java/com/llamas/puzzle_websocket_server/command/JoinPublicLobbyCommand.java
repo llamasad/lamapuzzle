@@ -13,12 +13,12 @@ import com.llamas.puzzle_websocket_server.service.LobbyService;
 
 import reactor.core.publisher.Mono;
 
-public class JoinPublicLobby implements Command<PlayerDTO> {
+public class JoinPublicLobbyCommand implements Command<PlayerDTO> {
 
     private final LobbyManager lobbyManager;
     private final LobbyService lobbyService;
 
-    public JoinPublicLobby(LobbyManager lobbyManager, LobbyService lobbyService) {
+    public JoinPublicLobbyCommand(LobbyManager lobbyManager, LobbyService lobbyService) {
         this.lobbyManager = lobbyManager;
         this.lobbyService = lobbyService;
     }
@@ -35,9 +35,8 @@ public class JoinPublicLobby implements Command<PlayerDTO> {
         if(lobby.getStatus().equals(LobbyStatus.PENDING_LOBBY)&&lobby.getPlayers().size()>1){
             lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
             lobbyService.emitWordBasedOnWordCount(lobby);
-    
         }
-        return null;
+        return Mono.empty();
     }
     
 }
