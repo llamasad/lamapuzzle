@@ -1,0 +1,25 @@
+/* [project]/src/assets/fonts/nguechNgoac-s.p.otf (static in css) */
+/* embedded static asset "/_next/static/media/nguechNgoac-s.p.203421d5.otf" */
+
+/* [project]/src/assets/fonts/nguechngoacfont_7da8c52f.module.css [app-client] (css) */
+@font-face {
+  font-family: nguechNgoacFont;
+  src: url("../media/nguechNgoac-s.p.203421d5.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: nguechNgoacFont Fallback;
+  src: local(Arial);
+  ascent-override: 70.02%;
+  descent-override: 20.02%;
+  line-gap-override: 10.01%;
+  size-adjust: 100.0%;
+}
+
+.nguechngoacfont_7da8c52f-module___HXjzG__className {
+  font-family: nguechNgoacFont, nguechNgoacFont Fallback;
+}
+
+
+/*# sourceMappingURL=src_assets_fonts_44e74c73._.css.map*/

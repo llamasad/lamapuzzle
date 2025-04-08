@@ -7,6 +7,7 @@ const images = {
     clockIcon:require('./clockIcon.png').default,
     pencilIcon:require('./pencilIcon.png').default,
     eraeseIcon:require('./eraseIcon.png').default,
+    pencil:require('./pencil.png').default,
 }
 
 export default images;

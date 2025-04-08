@@ -24,7 +24,6 @@ public class CreatePrivateLobbyCommand implements Command<PlayerDTO> {
         Player player = new Player(session.getId(), data.getUsername(), PlayerRole.GUESSER, data.isAuthorized(), 0, false);
         lobby.getPlayers().put(player.getSid(), player);
         lobby.getDrawerQueue().add(player.getSid());
-        lobby.getSink().tryEmitNext("success");
         return Mono.empty();
     }
 }

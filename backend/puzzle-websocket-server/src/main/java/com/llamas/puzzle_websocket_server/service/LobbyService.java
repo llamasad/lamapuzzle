@@ -15,15 +15,15 @@ import lombok.AllArgsConstructor;
 
 @Service
 @AllArgsConstructor
-public class LobbyService { 
+public class LobbyService {
 
     StrokeStackManager strokeStackManager;
 
-    LobbyService(){
-        this.strokeStackManager = new StrokeStackManager();
+    LobbyService(StrokeStackManager strokeStackManager) {
+        this.strokeStackManager = strokeStackManager;
     }
 
-    public Player choosePlayer(Lobby lobby){
+    public Player choosePlayer(Lobby lobby) {
         Queue<String> drawers = lobby.getDrawerQueue();
         if (drawers.isEmpty()) {
             drawers.addAll(lobby.getPlayers().keySet());
@@ -31,11 +31,11 @@ public class LobbyService {
 
         String drawerSid = drawers.poll();
         Player drawer = lobby.getPlayers().get(drawerSid);
-        
+
         for (Player player : lobby.getPlayers().values()) {
             if (player.getRole() == PlayerRole.DRAWER) {
-            player.setRole(PlayerRole.GUESSER);
-            break;
+                player.setRole(PlayerRole.GUESSER);
+                break;
             }
         }
 
@@ -44,20 +44,19 @@ public class LobbyService {
         return drawer;
     }
 
-    //choose words for the drawer
     public List<String> chooseWords(Lobby lobby) {
         List<String> words = lobby.isUseCustomWords() ? lobby.getCustomWords() : lobby.getWords();
         Collections.shuffle(words);
         int wordCount = Math.min(lobby.getWordCount(), words.size());
-        List<String> selectedWords = new ArrayList<>(words.subList(0, wordCount)); 
+        List<String> selectedWords = new ArrayList<>(words.subList(0, wordCount));
         words.subList(0, wordCount).clear();
         return selectedWords;
     }
 
-    public void emitWordBasedOnWordCount(Lobby lobby){
+    public void emitWordBasedOnWordCount(Lobby lobby) {
         List<String> selectedWords = chooseWords(lobby);
         Player drawer = choosePlayer(lobby);
-        lobby.getSink().tryEmitNext(drawer.getSid()+"-"+ String.join(",", selectedWords));
+        lobby.getSink().tryEmitNext(drawer.getSid() + "-" + String.join(",", selectedWords));
     }
 
     public int calculateScore(Long answerTime, Long roundStartTimes, Long drawTime) {
@@ -65,16 +64,16 @@ public class LobbyService {
         if (guessTime > drawTime) {
             return 0;
         }
-    
+
         Long score = 100 - (guessTime * 100 / drawTime);
-        
+
         return Math.toIntExact(score);
     }
-    
+
     public void updateAndEmitScore(Player player, int score, Lobby lobby) {
         player.setScore(player.getScore() + score);
         try {
-            lobby.getSink().tryEmitNext(player.getSid()+"-"+ score);
+            lobby.getSink().tryEmitNext(player.getSid() + "-" + score);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -85,11 +84,10 @@ public class LobbyService {
             player.setRole(PlayerRole.GUESSER);
             player.setAnswered(false);
         }
-        StrokeStack strokeStack =strokeStackManager.getStrokeStackForRoom(lobby.getId());
+        StrokeStack strokeStack = strokeStackManager.getStrokeStackForRoom(lobby.getId());
         strokeStack.clear();
         lobby.setCurrentWord(null);
         lobby.getSessionTemporaryPoints().clear();
 
     }
 }
-    

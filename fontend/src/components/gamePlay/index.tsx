@@ -5,37 +5,56 @@ import ToolPicker from "./drawingPlane/toolPicker";
 import DrawingPlane from "./drawingPlane";
 import PlayerSide from "./playerSide";
 import ChatAndAnswer from "./chatAndAnswer";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import GuessHeader from "./guessHeader";
-const colors = {
-  red: "#FF0000",
-  green: "#00FF00",
-  blue: "#0000FF",
-  yellow: "#FFFF00",
-  cyan: "#00FFFF",
-  magenta: "#FF00FF",
-  orange: "#FFA500",
-  darkGreen: "#008000",
-  purple: "#800080",
-  white: "#FFFFFF",
-  black: "#000000",
-  gray: "#808080",
-};
+import { Status } from "@/app/page";
+import { Player } from "./playerSide";
+import GameSettings from "./gameSettings";
 
-export default function GamePlay() {
-  
+export default function GamePlay({
+  gameStatus,
+  setGameStatus,
+  isLoading,
+  setIsLoading,
+}: {
+  gameStatus: Status;
+  setGameStatus: (status: Status) => void;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+}) {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [onDrawRole, setOnDrawRole] = useState(false);
+  const [word, setWord] = useState<string>("Waiting");
+
   return (
     <div className="mt-[-40px] m-auto xl:w-[1256px] pb-10">
-      <div className="grid grid-cols-24 gap-2 h-[560px] mt-2">
-        <div className=" col-span-3">
-          <PlayerSide />
+      <div className="grid grid-cols-48 gap-2 h-[588px] mt-2">
+        <div className=" col-span-7">
+          <PlayerSide players={players} setPlayers={setPlayers} />
         </div>
-        <div className="col-span-16 space-y-2">
-          <GuessHeader />
-          <DrawingPlane />
+        <div className="col-span-31 space-y-2 h-[588px] overflow-hidden ">
+          <GuessHeader onDrawRole={onDrawRole} setWord={setWord} word={word} />
+
+          <div
+            className={` 
+              col-span-31 space-y-2 h-[calc(588px_-_58px)] 
+              transition-transform duration-500 ease-in-out ${
+                gameStatus === "lobby" ? "translate-y-[-538px]" : ""
+              }
+            `}
+          >
+            <DrawingPlane
+              players={players}
+              word={word}
+              setWord={setWord}
+              onDrawRole={onDrawRole}
+              setOnDrawRole={setOnDrawRole}
+            />
+            {gameStatus==="lobby"&&<GameSettings setGameStatus={setGameStatus} />}
+          </div>
         </div>
-        <div className="bg-white shadow shadow-gray-300 col-span-5">
-          <ChatAndAnswer/>
+        <div className="bg-white shadow shadow-gray-300 col-span-10">
+          <ChatAndAnswer />
         </div>
       </div>
     </div>

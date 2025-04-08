@@ -31,6 +31,10 @@ public class StartGameCommand implements  Command<LobbySettingDTO>{
             System.out.println("Game is already on, ignoring command");
             return Mono.empty();
         }
+        if(lobby.getPlayers().size() < 2) {
+            
+            return Mono.empty();
+        }
         data.applyTo(lobby);
         int wordsFetchCount = lobby.getWordCount()*lobby.getMaxRound();
         wordService.getRandomWord(wordsFetchCount)
