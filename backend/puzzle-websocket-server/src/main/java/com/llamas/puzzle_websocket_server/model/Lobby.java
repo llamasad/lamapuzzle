@@ -14,8 +14,8 @@ import reactor.core.publisher.Sinks;
 @Data
 public class Lobby extends LobbySetting{
     private final String id;
-    private final Sinks.Many<String> sink= Sinks.many().multicast().onBackpressureBuffer();
-    private int currentRound= 0;
+    private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
+    private int currentRound= 1;
     private LobbyStatus status = LobbyStatus.PENDING_LOBBY;
     private final Map<String, Player> players = new HashMap<>();
     private final Queue<String> drawerQueue = new LinkedList<>();

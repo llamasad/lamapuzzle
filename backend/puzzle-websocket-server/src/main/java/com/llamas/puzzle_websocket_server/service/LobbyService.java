@@ -7,20 +7,23 @@ import java.util.Queue;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.Player;
+import com.llamas.puzzle_websocket_server.model.PlayerDTO;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
-
-import lombok.AllArgsConstructor;
+import com.llamas.puzzle_websocket_server.model.WordsToChooseDTO;
 
 @Service
-@AllArgsConstructor
 public class LobbyService {
 
     StrokeStackManager strokeStackManager;
+    ObjectMapper objectMapper;
 
-    LobbyService(StrokeStackManager strokeStackManager) {
+    LobbyService(StrokeStackManager strokeStackManager, ObjectMapper objectMapper) {
         this.strokeStackManager = strokeStackManager;
+        this.objectMapper = objectMapper;
     }
 
     public Player choosePlayer(Lobby lobby) {
@@ -56,7 +59,13 @@ public class LobbyService {
     public void emitWordBasedOnWordCount(Lobby lobby) {
         List<String> selectedWords = chooseWords(lobby);
         Player drawer = choosePlayer(lobby);
-        lobby.getSink().tryEmitNext(drawer.getSid() + "-" + String.join(",", selectedWords));
+        WordsToChooseDTO wordsToChooseDTO = new WordsToChooseDTO(selectedWords, drawer.getUsername(), drawer.getSid());
+        DataWraperDTO<WordsToChooseDTO> dataWraperDTO = new DataWraperDTO("wordsToChoose", wordsToChooseDTO);
+        try {
+            lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperDTO));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public int calculateScore(Long answerTime, Long roundStartTimes, Long drawTime) {
@@ -72,8 +81,16 @@ public class LobbyService {
 
     public void updateAndEmitScore(Player player, int score, Lobby lobby) {
         player.setScore(player.getScore() + score);
+        player.setScorePerTurn(score);
+        List<Player> players = new ArrayList<>(lobby.getPlayers().values());
+        List<PlayerDTO> playerDTOs = players.stream()
+                .map(p -> new PlayerDTO(p.getUsername(), p.isAuthorized(), p.getAvatar(), p.getRole(), p.getScore(),
+                        p.getScorePerTurn(), p.isAnswered()))
+                .toList();
+        DataWraperDTO<List<PlayerDTO>> dataWraperDTO = new DataWraperDTO("playerList", playerDTOs);
+
         try {
-            lobby.getSink().tryEmitNext(player.getSid() + "-" + score);
+            lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperDTO));
         } catch (Exception e) {
             e.printStackTrace();
         }

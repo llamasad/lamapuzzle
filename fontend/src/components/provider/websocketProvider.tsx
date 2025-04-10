@@ -21,7 +21,7 @@ export const WebSocketProvider: React.FC<{
 
     const newWs = query
       ? new WebSocket("ws://localhost:8080/event-emitter/" + query)
-      : new WebSocket("ws://localhost:8080/event-emitter/publicLobby");
+      : new WebSocket("ws://localhost:8080/event-emitter/publiclobby");
     
     newWs.onopen = () => onOpen(newWs);
     newWs.onclose = () => console.log("Disconnected from WebSocket");
@@ -32,8 +32,8 @@ export const WebSocketProvider: React.FC<{
   
   const createLobby=(onOpen: (ws: WebSocket) => void)=>{
     if (ws) return;
-    const lobbyId =shortUUID();6
-    const newWs = new WebSocket("ws://localhost:8080/event-emitter/" + lobbyId);
+    const lobbyId =shortUUID();
+    const newWs = new WebSocket("ws://localhost:8080/event-emitter/cpl:" + lobbyId);
 
     newWs.onopen = () => onOpen(newWs);
     newWs.onclose = () => console.log("Disconnected from WebSocket");

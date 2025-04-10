@@ -17,19 +17,18 @@ public class LobbyContext {
     private Long roundStartTimes;
     private final LobbyService lobbyService;
 
-
-    public LobbyContext(Lobby lobby,LobbyService lobbyService) {
+    public LobbyContext(Lobby lobby, LobbyService lobbyService) {
         this.lobby = lobby;
         this.lobbyService = lobbyService;
     }
 
-
     // Method to start the next round
     public void startRound() {
         lobby.setStatus(LobbyStatus.IS_PLAYING);
-        roundStartTimes = System.currentTimeMillis()/1000;
-        lobby.setCurrentRound(lobby.getCurrentRound() + 1);
-        lobby.getSink().tryEmitNext("Round " + lobby.getCurrentRound() + " started");
+        roundStartTimes = System.currentTimeMillis() / 1000;
+        if (lobby.getDrawerQueue().isEmpty()) {
+            lobby.setCurrentRound(lobby.getCurrentRound() + 1);
+        }
         scheduleEndOfRound();
     }
 
@@ -38,12 +37,11 @@ public class LobbyContext {
         scheduler.schedule(() -> {
             lobbyService.refreshLobbyEachRound(lobby);
             lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
-            if (lobby.getCurrentRound() <lobby.getMaxRound()) {
+            if (lobby.getCurrentRound() < lobby.getMaxRound()) {
                 lobbyService.emitWordBasedOnWordCount(lobby);
             } else {
                 lobby.setStatus(LobbyStatus.FINISHED);
-                lobby.getSink().tryEmitNext("Game ended");
-            }   
+            }
         }, lobby.getDrawTime(), TimeUnit.SECONDS);
     }
 

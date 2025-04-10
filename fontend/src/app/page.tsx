@@ -21,7 +21,7 @@ const GameUI = {
 export default function Page() {
   const searchParams = useSearchParams();
   const lobbyId = searchParams.get("invite")||"";
-  const [gameStatus, setGameStatus] = useState<Status>("lobby");
+  const [gameStatus, setGameStatus] = useState<Status>("landing");
   const [isLoading, setIsLoading] = useState(false);
   const GameComponent = GameUI[gameStatus];
 

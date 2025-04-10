@@ -7,6 +7,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtility;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtilityFactory;
+import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
@@ -60,9 +61,10 @@ public class DrawingCommand implements Command<Object> {
                     strokeStackManager.getStrokeStackForRoom(session.getId()).addStroke(stroke);
                     temporaryPoints.clear();
                 }
-    
-                // Publish the event to the lobby
-                String event = objectMapper.writeValueAsString(vector2DDTOWithStatus);
+                
+                DataWraperDTO dataWrapper = new DataWraperDTO("draw", vector2DDTOWithStatus);
+
+                String event = objectMapper.writeValueAsString(dataWrapper);
                 System.out.println("Publishing event: " + event);
                 lobbyEvent.publishEvent(event);
             } else if (data instanceof Vector2DDTO) {
@@ -71,8 +73,8 @@ public class DrawingCommand implements Command<Object> {
                 temporaryPoints.add(vector2DDTO.toVector2D());
     
                 // Publish the event to the lobby
-                String event = objectMapper.writeValueAsString(vector2DDTO);
-                System.out.println("Publishing event: " + event);
+                DataWraperDTO dataWrapper = new DataWraperDTO("draw", vector2DDTO);
+                String event = objectMapper.writeValueAsString(dataWrapper);
                 lobbyEvent.publishEvent(event);
             }
     

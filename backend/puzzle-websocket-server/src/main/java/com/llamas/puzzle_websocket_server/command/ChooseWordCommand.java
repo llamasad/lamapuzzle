@@ -2,8 +2,12 @@ package com.llamas.puzzle_websocket_server.command;
 
 import org.springframework.web.reactive.socket.WebSocketSession;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
+import com.llamas.puzzle_websocket_server.model.StartTurnDTO;
 import com.llamas.puzzle_websocket_server.service.LobbyContext;
 import com.llamas.puzzle_websocket_server.service.LobbyEvent;
 import com.llamas.puzzle_websocket_server.service.LobbyManager;
@@ -12,9 +16,11 @@ import reactor.core.publisher.Mono;
 
 public class ChooseWordCommand implements Command<String> {
     private final LobbyManager lobbyManager;
+    private final ObjectMapper objectMapper;
 
-    public ChooseWordCommand(LobbyManager lobbyManager) {
+    public ChooseWordCommand(LobbyManager lobbyManager, ObjectMapper objectMapper) {
         this.lobbyManager = lobbyManager;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -41,7 +47,14 @@ public class ChooseWordCommand implements Command<String> {
                     .findFirst()
                     .ifPresent(player -> {
                         lobby.setCurrentWord(data);
-                        lobby.getSink().tryEmitNext(revealedWordStr);
+                        StartTurnDTO startTurnDTO = new StartTurnDTO(revealedWordStr, lobby.getDrawTime(), lobby.getCurrentRound(), lobby.getMaxRound());
+                        DataWraperDTO dataWrapper= new DataWraperDTO("guessWord", startTurnDTO);
+                        try {
+                            String json = objectMapper.writeValueAsString(dataWrapper);
+                            lobby.getSink().tryEmitNext(json);
+                        } catch (JsonProcessingException e) {
+                            e.printStackTrace(); 
+                        }
                     });
         }
         return Mono.empty();    

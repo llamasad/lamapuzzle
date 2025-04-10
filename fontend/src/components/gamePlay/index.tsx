@@ -54,7 +54,7 @@ export default function GamePlay({
           </div>
         </div>
         <div className="bg-white shadow shadow-gray-300 col-span-10">
-          <ChatAndAnswer />
+          <ChatAndAnswer players={players}/>
         </div>
       </div>
     </div>

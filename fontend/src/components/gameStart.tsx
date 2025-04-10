@@ -57,6 +57,7 @@ export default function GameStart({
             onClick={() =>
               connect((ws) => {
                 setIsLoading(true);
+                setGameStatus("playing");
                 ws.send(
                   JSON.stringify({
                     action: "JOIN_PUBLIC_LOBBY",

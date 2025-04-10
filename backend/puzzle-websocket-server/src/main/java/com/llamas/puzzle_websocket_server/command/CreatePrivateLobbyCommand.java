@@ -21,7 +21,7 @@ public class CreatePrivateLobbyCommand implements Command<PlayerDTO> {
     @Override
     public Mono<Void> execute(WebSocketSession session, PlayerDTO data, LobbyEvent lobbyEvent, String lobbyId) {
         Lobby lobby=lobbyManager.createPrivateLobby(lobbyId);
-        Player player = new Player(session.getId(), data.getUsername(), PlayerRole.GUESSER, data.isAuthorized(), 0, false);
+        Player player = new Player(session.getId(), data.getUsername(), PlayerRole.GUESSER, data.isAuthorized(), 0, false,data.getAvatar());
         lobby.getPlayers().put(player.getSid(), player);
         lobby.getDrawerQueue().add(player.getSid());
         return Mono.empty();

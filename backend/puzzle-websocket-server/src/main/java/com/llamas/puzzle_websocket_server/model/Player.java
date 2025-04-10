@@ -15,4 +15,6 @@ public class Player {
     private boolean isAuthorized; 
     private int score;
     private boolean isAnswered;
+    private String avatar;
+    private int scorePerTurn;
 }
