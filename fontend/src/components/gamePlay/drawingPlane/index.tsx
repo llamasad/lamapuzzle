@@ -3,7 +3,7 @@ import { Stage, Layer, Line, Image } from "react-konva";
 import ColorPicker from "./colorPicker";
 import ToolPicker, { ToolName } from "./toolPicker";
 import { colors } from "./colorPicker";
-import ThicknessSlider from "./thinknessSlider";
+import ThicknessSlider from "./thicknessSlider";
 import PaintIcon from "../../svgs/paintIcon";
 import { useWebSocket } from "@/components/provider/websocketProvider";
 import toolPickerIcons from "@/assets/svgs";
@@ -26,72 +26,99 @@ export default function DrawingPlane({
   onDrawRole,
   setOnDrawRole,
   players,
+  setIsWaitingForWord,
+  isWaitingForWord,
 }: {
   word: string;
   setWord: React.Dispatch<React.SetStateAction<string>>;
   onDrawRole: boolean;
   setOnDrawRole: React.Dispatch<React.SetStateAction<boolean>>;
   players: Player[];
+  setIsWaitingForWord: React.Dispatch<React.SetStateAction<boolean>>;
+  isWaitingForWord: boolean;
 }) {
   const { ws } = useWebSocket();
   const [selectedTool, setSelectedTool] = useState<ToolName>("pen");
   const [selectedColor, setSelectedColor] =
     useState<keyof typeof colors>("black");
-  const [wordsToChoose, setWordsToChoose] = useState<string[]>([
-    "some",
-    "words",
-    "here",
-  ]);
-
+  const [wordsToChoose, setWordsToChoose] = useState<string[]>([]);
   const [undoStack, setUndoStack] = useState<{ lines: LineType[]; bg: any }[]>(
     []
   );
   const [redoStack, setRedoStack] = useState<{ lines: LineType[]; bg: any }[]>(
     []
   );
-  const [isRevealAndSum, setIsRevealAndSum] = useState(true);
-  const [drawName, setDrawName] = useState<string>("datdz");
-  const [onTriggerPaint, setOnTriggerPaint] = useState(true);
+  const [isRevealAndSum, setIsRevealAndSum] = useState(false);
+  const [drawName, setDrawName] = useState<string>("");
+  const [onTriggerPaint, setOnTriggerPaint] = useState(false);
   const [lines, setLines] = useState<LineType[]>([]);
   const [strokeWidth, setStrokeWidth] = useState(6);
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
   const isDrawing = useRef(false);
   const stageRef = useRef<any>(null);
-
+  const backgroundImageRef = useRef<any>(null);
+  const linesRef = useRef<LineType[]>(lines);
+  const redoFunctionRef = useRef<any>(null);
+  const undoFunctionRef = useRef<any>(null);
+  linesRef.current = lines;
+  backgroundImageRef.current = backgroundImage;
+  console.log(
+    "lines",
+    lines,
+    "bg",
+    backgroundImage,
+    "undoStack",
+    undoStack,
+    "redoStack",
+    redoStack
+  );
   useEffect(() => {
-    if (ws && onDrawRole) {
+    if (ws) {
+      let timeOutId: NodeJS.Timeout | undefined;
+      let timeOutId2: NodeJS.Timeout | undefined;
       let currentTool: ToolName | null = null;
-      ws.onmessage = (event) => {
+      const messageHandler = (event: any) => {
         const payload = JSON.parse(event.data);
-
         if (payload.type === "draw") {
           if (payload.data.status === "START") {
+            setUndoStack((undoStack) => [
+              ...undoStack,
+              { lines: linesRef.current, bg: backgroundImageRef.current },
+            ]);
+            setRedoStack([]);
             currentTool = payload.data.toolType;
           }
           if (payload.data.status === "END") {
             currentTool = null;
           }
-          if (currentTool && currentTool === "fill") {
+          if (
+            currentTool &&
+            currentTool === "fill" &&
+            payload.data.status &&
+            payload.data.status === "START"
+          ) {
             const { x, y, color } = payload.data;
-            drawFill(x, y, color);
+
+            drawFill(Math.floor(x), Math.floor(y), color);
           } else if (currentTool && currentTool === "pen") {
-            if (payload.data.status) {
+            if (payload.data.status === "START") {
               const { toolType, x, y, color, thickness } = payload.data;
+
               setLines((prevLines) => [
                 ...prevLines,
                 {
-                  tool: toolType,
+                  tool: toolType as ToolName,
                   points: [x, y],
-                  color,
+                  color: color,
                   strokeWidth: thickness,
                 },
               ]);
             } else {
               const { x, y } = payload.data;
-              setLines((line) => {
-                const lastLine = line[line.length - 1];
-                lastLine.points = [x, y];
-                return [...line, lastLine];
+              setLines((lines) => {
+                const lastLine = lines[lines.length - 1];
+                lastLine.points = [...lastLine.points, x, y];
+                return [...lines.slice(0, -1), lastLine];
               });
             }
           }
@@ -109,22 +136,32 @@ export default function DrawingPlane({
               ]);
             } else {
               const { x, y } = payload.data;
-              setLines((line) => {
-                const lastLine = line[line.length - 1];
-                lastLine.points = [x, y];
-                return [...line, lastLine];
+              setLines((lines) => {
+                const lastLine = lines[lines.length - 1];
+                lastLine.points = [...lastLine.points, x, y];
+                return [...lines.slice(0, -1), lastLine];
               });
             }
           }
         } else if (payload.type === "wordsToChoose") {
-          if (payload.data.words.length > 0) {
-            setTimeout(() => {
+          console.log("wordsToChoose", payload.data);
+          if (payload.data.words && payload.data.words.length > 0) {
+            timeOutId = setTimeout(() => {
+              setWordsToChoose(payload.data.words);
               setIsRevealAndSum(false);
               setOnDrawRole(true);
-              setWord("");
-              setWordsToChoose(payload.data.words);
-              setTimeout(() => {
+              setWord((currentWord) => {
+                console.log("test2", currentWord);
+
+                if (currentWord === "Waiting") {
+                  return "";
+                }
+                return currentWord;
+              });
+              timeOutId2 = setTimeout(() => {
                 setWord((currentWord) => {
+                  console.log("test3", currentWord);
+
                   let word =
                     payload.data.words[
                       Math.floor(Math.random() * payload.data.words.length)
@@ -137,6 +174,7 @@ export default function DrawingPlane({
                       })
                     );
                     setWordsToChoose([]);
+                    setIsWaitingForWord(false);
                     return word;
                   }
                   return currentWord;
@@ -144,25 +182,241 @@ export default function DrawingPlane({
               }, 10000);
             }, 3000);
           } else {
-            setOnDrawRole(false);
-            setWord("");
-            setWordsToChoose([]);
-            setDrawName(payload.data.name);
+            setTimeout(() => {
+              setOnDrawRole(false);
+              setWord("");
+              setIsRevealAndSum(false);
+              setIsWaitingForWord(true);
+              setWordsToChoose([]);
+              setDrawName(payload.data.drawerName);
+            }, 3000);
           }
         } else if (payload.type === "revealAndSum") {
-          setWord(payload.data.word);
+          setWordsToChoose([]);
+          setWord("Waiting");
+          refreshDrawing();
           setIsRevealAndSum(true);
+        } else if (payload.type === "edit") {
+          if (payload.data === "UNDO") {
+            undoFunctionRef.current();
+          } else if (payload.data === "REDO") {
+            redoFunctionRef.current();
+          }
+        } else if (payload.type === "gameState") {
+          console.log("gameState", payload.data);
+          const initGameState = async () => {
+            if (payload.data.strokeStack) {
+              if (payload.data.strokeStack.undoStack.length > 0) {
+                await handleGameStateToStateUndo(
+                  payload.data.strokeStack.undoStack
+                );
+              }
+              if (
+                payload.data.strokeStack.redoStack.length > redoStack.length
+              ) {
+                await handleGameStateToStateRedo(
+                  payload.data.strokeStack.redoStack
+                );
+              }
+            }
+          };
+          initGameState();
         }
+      };
+
+      ws.addEventListener("message", messageHandler);
+
+      return () => {
+        if (timeOutId) clearTimeout(timeOutId);
+        if (timeOutId2) clearTimeout(timeOutId2);
+        ws.removeEventListener("message", messageHandler);
       };
     }
   }, [ws]);
 
+  const handleGameStateToStateUndo = async (
+    state: Array<{
+      toolType: string;
+      position: Array<{ x: number; y: number }>;
+      color: string;
+      thickness: number;
+    }>
+  ) => {
+    for (const item of state) {
+      item.toolType = item.toolType.toLowerCase();
+
+      setUndoStack((undoStack) => {
+        console.log(linesRef.current.length, backgroundImageRef.current);
+        if (
+          linesRef.current.length <= 0 &&
+          backgroundImageRef.current === null
+        ) {
+          return undoStack;
+        }
+        return [
+          ...undoStack,
+          { lines: linesRef.current, bg: backgroundImageRef.current },
+        ];
+      });
+
+      const flatArray = item.position
+        .slice(0, -1)
+        .flatMap(({ x, y }) => [x, y]);
+
+      if (item.toolType === "pen") {
+        setLines((prevLines) => {
+          linesRef.current = [
+            ...prevLines,
+            {
+              tool: item.toolType as ToolName,
+              points: flatArray,
+              color: item.color,
+              strokeWidth: item.thickness,
+            },
+          ];
+          return [
+            ...prevLines,
+            {
+              tool: item.toolType as ToolName,
+              points: flatArray,
+              color: item.color,
+              strokeWidth: item.thickness,
+            },
+          ];
+        });
+      } else if (item.toolType === "eraser") {
+        setLines((prevLines) => [
+          ...prevLines,
+          {
+            tool: item.toolType as ToolName,
+            points: flatArray,
+            color: "#fff",
+            strokeWidth: item.thickness,
+          },
+        ]);
+      } else if (item.toolType === "fill") {
+        const fillArray = item.position.flatMap(({ x, y }) => [x, y]);
+        await drawFill(
+          Math.floor(fillArray[0]),
+          Math.floor(fillArray[1]),
+          item.color
+        );
+      }
+      await new Promise((res) => setTimeout(res, 100));
+    }
+  };
+
+  const handleGameStateToStateRedo = async (
+    state: Array<{
+      toolType: string;
+      position: Array<{ x: number; y: number }>;
+      color: string;
+      thickness: number;
+    }>
+  ) => {
+    const bg = backgroundImageRef.current;
+    const lines = linesRef.current;
+    console.log("state", state);
+    if (state.length > 0) {
+      const nextState = state[state.length - 1];
+      nextState.toolType = nextState.toolType.toLowerCase();
+      if (nextState.toolType === "pen") {
+        const flatArray = nextState.position
+          .slice(0, -1)
+          .flatMap(({ x, y }) => [x, y]);
+        setLines((prevLines) => {
+          linesRef.current = [
+            ...prevLines,
+            {
+              tool: nextState.toolType as ToolName,
+              points: flatArray,
+              color: nextState.color,
+              strokeWidth: nextState.thickness,
+            },
+          ];
+
+          return [
+            ...prevLines,
+            {
+              tool: nextState.toolType as ToolName,
+              points: flatArray,
+              color: nextState.color,
+              strokeWidth: nextState.thickness,
+            },
+          ];
+        });
+      } else if (nextState.toolType === "eraser") {
+        const flatArray = nextState.position
+          .slice(0, -1)
+          .flatMap(({ x, y }) => [x, y]);
+        setLines((prevLines) => {
+          linesRef.current = [
+            ...prevLines,
+            {
+              tool: nextState.toolType as ToolName,
+              points: flatArray,
+              color: "#fff",
+              strokeWidth: nextState.thickness,
+            },
+          ];
+
+          return [
+            ...prevLines,
+            {
+              tool: nextState.toolType as ToolName,
+              points: flatArray,
+              color: "#fff",
+              strokeWidth: nextState.thickness,
+            },
+          ];
+        });
+      } else if (nextState.toolType === "fill") {
+        const flatArray = nextState.position.flatMap(({ x, y }) => [x, y]);
+        await drawFill(
+          Math.floor(flatArray[0]),
+          Math.floor(flatArray[1]),
+          nextState.color
+        );
+      }
+      setRedoStack((redoStack) => {
+        if (
+          linesRef.current.length < 0 &&
+          backgroundImageRef.current === null
+        ) {
+          return redoStack;
+        }
+        return [
+          ...redoStack,
+          { lines: linesRef.current, bg: backgroundImageRef.current },
+        ];
+      });
+      await handleGameStateToStateRedo(state.slice(0, state.length - 1));
+
+      await new Promise((res) => setTimeout(res, 100));
+    }
+    setLines(lines);
+    setBackgroundImage(bg);
+  };
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "z") {
         handleUndo();
+        ws &&
+          ws.send(
+            JSON.stringify({
+              action: "EDIT",
+              data: "UNDO",
+            })
+          );
       } else if (e.ctrlKey && e.key === "y") {
         handleRedo();
+        ws &&
+          ws.send(
+            JSON.stringify({
+              action: "EDIT",
+              data: "REDO",
+            })
+          );
       }
     };
 
@@ -176,6 +430,13 @@ export default function DrawingPlane({
       }
     };
   }, [onDrawRole, redoStack, lines, backgroundImage]);
+
+  const refreshDrawing = () => {
+    setLines([]);
+    setBackgroundImage(null);
+    setUndoStack([]);
+    setRedoStack([]);
+  };
 
   const handleUndo = () => {
     if (undoStack.length === 0) return;
@@ -198,7 +459,8 @@ export default function DrawingPlane({
     setLines(nextState.lines);
     setBackgroundImage(nextState.bg);
   };
-
+  redoFunctionRef.current = handleRedo;
+  undoFunctionRef.current = handleUndo;
   const handleMouseDown = (e: any) => {
     if (!onDrawRole) return;
     if (selectedTool === "fill") {
@@ -208,6 +470,22 @@ export default function DrawingPlane({
 
     isDrawing.current = true;
     const pos = e.target.getStage().getPointerPosition();
+
+    // Send the "START" event with x, y coordinates
+    ws &&
+      ws.send(
+        JSON.stringify({
+          action: "DRAW",
+          data: {
+            status: "START",
+            toolType: selectedTool,
+            x: pos.x,
+            y: pos.y,
+            color: colors[selectedColor],
+            thickness: strokeWidth,
+          },
+        })
+      );
 
     setUndoStack([...undoStack, { lines, bg: backgroundImage }]);
     setRedoStack([]);
@@ -229,6 +507,18 @@ export default function DrawingPlane({
 
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
+
+    ws &&
+      ws.send(
+        JSON.stringify({
+          action: "DRAW",
+          data: {
+            x: point.x,
+            y: point.y,
+          },
+        })
+      );
+
     const lastLine = lines[lines.length - 1];
     lastLine.points = [...lastLine.points, point.x, point.y];
 
@@ -236,10 +526,39 @@ export default function DrawingPlane({
   };
 
   const handleMouseUp = () => {
+    if (!onDrawRole) return;
+    if (selectedTool === "fill") {
+      ws &&
+        ws.send(
+          JSON.stringify({
+            action: "DRAW",
+            data: {
+              toolType: selectedTool,
+              color: colors[selectedColor],
+              thickness: strokeWidth,
+              status: "END",
+            },
+          })
+        );
+      return;
+    }
     isDrawing.current = false;
-  };
 
-  const drawFill = (x: number, y: number, color: string) => {
+    // Send the "END" event
+    ws &&
+      ws.send(
+        JSON.stringify({
+          action: "DRAW",
+          data: {
+            toolType: selectedTool,
+            color: colors[selectedColor],
+            thickness: strokeWidth,
+            status: "END",
+          },
+        })
+      );
+  };
+  const drawFill = async (x: number, y: number, color: string) => {
     const stage = stageRef.current;
     if (!stage) return;
 
@@ -259,29 +578,50 @@ export default function DrawingPlane({
     if (colorsMatch(targetColor, fillColor)) return;
 
     floodFill(data, x, y, width, height, targetColor, fillColor);
-
     ctx.putImageData(imageData, 0, 0);
 
-    const newImage = new window.Image();
-    newImage.src = canvas.toDataURL();
-    newImage.onload = () => {
-      setBackgroundImage(newImage);
-    };
+    const newImage = await new Promise<HTMLImageElement>((resolve) => {
+      const img = new window.Image();
+      img.src = canvas.toDataURL();
+      img.onload = () => resolve(img);
+    });
+    backgroundImageRef.current = newImage;
+    setBackgroundImage(newImage);
   };
 
   const handleFillClick = (e: any) => {
     if (selectedTool !== "fill" || !stageRef.current) return;
 
     const stage = stageRef.current;
+
+    // Send the "FILL" event with x, y, and color
+
     const layer = stage.getLayers()[0];
     const canvas = layer.toCanvas();
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     const pos = stage.getPointerPosition();
+    ws &&
+      ws.send(
+        JSON.stringify({
+          action: "DRAW",
+          data: {
+            status: "START",
+            x: Math.floor(pos.x),
+            y: Math.floor(pos.y),
+            color: colors[selectedColor],
+            toolType: selectedTool,
+          },
+        })
+      );
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const { data, width, height } = imageData;
-    const targetColor = getPixelColor(data, pos.x, pos.y, width);
+    const targetColor = getPixelColor(
+      data,
+      Math.floor(pos.x),
+      Math.floor(pos.y),
+      width
+    );
     const fillColor = hexToRGBA(colors[selectedColor]);
 
     if (colorsMatch(targetColor, fillColor)) return;
@@ -289,13 +629,20 @@ export default function DrawingPlane({
     setUndoStack([...undoStack, { lines, bg: backgroundImage }]);
     setRedoStack([]);
 
-    floodFill(data, pos.x, pos.y, width, height, targetColor, fillColor);
+    floodFill(
+      data,
+      Math.floor(pos.x),
+      Math.floor(pos.y),
+      width,
+      height,
+      targetColor,
+      fillColor
+    );
     ctx.putImageData(imageData, 0, 0);
 
     const newImage = new window.Image();
     newImage.src = canvas.toDataURL();
     newImage.onload = () => {
-      console.log("newImage: ", newImage);
       setBackgroundImage(newImage);
     };
   };
@@ -357,9 +704,9 @@ export default function DrawingPlane({
         }}
       >
         <div
-          className={`absolute inset-0 z-10 bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
+          className={`absolute inset-0  bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
             wordsToChoose.length > 0 && onDrawRole
-              ? "translate-y-0 opacity-100"
+              ? "translate-y-0 opacity-100 z-30"
               : "-translate-y-40 opacity-0"
           }`}
         >
@@ -368,6 +715,7 @@ export default function DrawingPlane({
               key={index}
               onClick={() => {
                 setWord(value);
+
                 ws &&
                   ws.send(
                     JSON.stringify({
@@ -385,77 +733,82 @@ export default function DrawingPlane({
         </div>
 
         <div
-          className={`absolute inset-0 z-10 bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
-            drawName && !word && !onDrawRole
-              ? "translate-y-0 opacity-100"
+          className={`absolute inset-0  bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
+            drawName && isWaitingForWord && !onDrawRole
+              ? "translate-y-0 opacity-100 z-30"
               : "-translate-y-40 opacity-0"
           }`}
         >
           <div className="text-2xl font-medium  p-4 text-white  ">
             <span className={"text-4xl font-bold " + fonts.nguechNgoacFont}>
-              {" "}
               {drawName}
-            </span>{" "}
+            </span>
             đang chọn từ
           </div>
         </div>
         <div
-          className={`absolute inset-0 z-10 bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
+          className={`absolute inset-0 bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
             isRevealAndSum
-              ? "translate-y-0 opacity-100"
+              ? "translate-y-0 opacity-100 z-30"
               : "-translate-y-40 opacity-0"
           }`}
         >
-          <div className="mx-auto w-8/10 pl-8">
-            <div className="flex gap-x-16 flex-wrap">
-              {players
-                .sort((a, b) => b.scorePerTurn - a.scorePerTurn)
-                .map((player, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="flex justify-between mb-1 items-center w-4/10"
-                    >
-                      <div
-                        className={
-                          "text-2xl font-bold flex flex-1 min-w-0  " +
-                          fonts.nguechNgoacFont
-                        }
-                      >
-                        <Image2
-                          className="mr-2"
-                          src={player.avatar}
-                          alt=""
-                          width={58}
-                          height={58}
-                        />
-                        <div className="truncate leading-14">
-                          {player.name} 123124124125151512
+          {wordsToChoose.length <= 0 &&
+            players.length > 0 &&
+            isRevealAndSum && (
+              <div className="mx-auto w-8/10 pl-8">
+                <div className="flex gap-x-16 flex-wrap">
+                  {players
+                    .sort((a, b) => b.scorePerTurn - a.scorePerTurn)
+                    .map((player, index) => {
+                      console.log(player);
+                      return (
+                        <div
+                          key={index}
+                          className="flex justify-between mb-1 items-center w-4/10"
+                        >
+                          <div
+                            className={
+                              "text-2xl font-bold flex flex-1 min-w-0  " +
+                              fonts.nguechNgoacFont
+                            }
+                          >
+                            <Image2
+                              className="mr-2"
+                              src={player.avatar || "/test"}
+                              alt=""
+                              width={58}
+                              height={58}
+                            />
+                            <div className="truncate leading-14">
+                              {player.username}
+                            </div>
+                          </div>
+                          <div
+                            className={
+                              "leading-8 pl-4 " +
+                              (player.isGuessed ? "text-green-500" : "")
+                            }
+                          >
+                            +{player.scorePerTurn ? player.scorePerTurn : 0}
+                          </div>
                         </div>
-                      </div>
-                      <div
-                        className={
-                          "leading-8 pl-4 " +
-                          (player.isGuessed ? "text-green-500" : "")
-                        }
-                      >
-                        +{player.scorePerTurn ? player.scorePerTurn : 0}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
         </div>
         <Stage
           ref={stageRef}
-          width={834}
-          height={502}
+          width={808}
+          height={530}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onTouchStart={handleMouseDown}
           onTouchMove={handleMouseMove}
+          className="z-40"
           onTouchEnd={handleMouseUp}
         >
           <Layer>
@@ -487,7 +840,7 @@ function getPixelColor(
   y: number,
   width: number
 ) {
-  const index = (y * width + x) * 4;
+  const index = (Math.floor(y) * Math.floor(width) + Math.floor(x)) * 4;
   return [data[index], data[index + 1], data[index + 2], data[index + 3]];
 }
 

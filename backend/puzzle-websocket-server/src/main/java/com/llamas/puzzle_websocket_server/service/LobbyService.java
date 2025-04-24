@@ -3,11 +3,14 @@ package com.llamas.puzzle_websocket_server.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.llamas.puzzle_websocket_server.entity.Word;
 import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.Player;
@@ -15,15 +18,19 @@ import com.llamas.puzzle_websocket_server.model.PlayerDTO;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.WordsToChooseDTO;
 
+import reactor.core.publisher.Mono;
+
 @Service
 public class LobbyService {
 
     StrokeStackManager strokeStackManager;
     ObjectMapper objectMapper;
+    WordService wordService;
 
-    LobbyService(StrokeStackManager strokeStackManager, ObjectMapper objectMapper) {
+    LobbyService(StrokeStackManager strokeStackManager, ObjectMapper objectMapper, WordService wordService) {
         this.strokeStackManager = strokeStackManager;
         this.objectMapper = objectMapper;
+        this.wordService = wordService;
     }
 
     public Player choosePlayer(Lobby lobby) {
@@ -47,29 +54,56 @@ public class LobbyService {
         return drawer;
     }
 
-    public List<String> chooseWords(Lobby lobby) {
-        List<String> words = lobby.isUseCustomWords() ? lobby.getCustomWords() : lobby.getWords();
+  public Mono<List<String>> chooseWords(Lobby lobby) {
+    int wordsFetchCount = lobby.getWordCount() * lobby.getMaxRound() * lobby.getPlayers().size();
+
+    List<String> words = lobby.isUseCustomWords() && lobby.getCustomWords().size() >= lobby.getWordCount()? lobby.getCustomWords()
+        : lobby.getWords();
+
+    if (!words.isEmpty()) {
         Collections.shuffle(words);
         int wordCount = Math.min(lobby.getWordCount(), words.size());
         List<String> selectedWords = new ArrayList<>(words.subList(0, wordCount));
         words.subList(0, wordCount).clear();
-        return selectedWords;
-    }
+        return Mono.just(selectedWords);
+    } else {
+        return wordService.getRandomWord(wordsFetchCount) // Mono<List<Word>>
+            .map(fetchedWords -> {
+                // Convert to strings
+                List<String> asStrings = fetchedWords.stream()
+                    .map(Word::getText) // or getText(), etc.
+                    .collect(Collectors.toList());
 
+                words.addAll(asStrings); 
+
+                Collections.shuffle(words);
+                int wordCount = Math.min(lobby.getWordCount(), words.size());
+                List<String> selectedWords = new ArrayList<>(words.subList(0, wordCount));
+                words.subList(0, wordCount).clear();
+
+                return selectedWords;
+            });
+    }
+}
+
+    
     public void emitWordBasedOnWordCount(Lobby lobby) {
-        List<String> selectedWords = chooseWords(lobby);
-        Player drawer = choosePlayer(lobby);
-        WordsToChooseDTO wordsToChooseDTO = new WordsToChooseDTO(selectedWords, drawer.getUsername(), drawer.getSid());
-        DataWraperDTO<WordsToChooseDTO> dataWraperDTO = new DataWraperDTO("wordsToChoose", wordsToChooseDTO);
-        try {
-            lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperDTO));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        chooseWords(lobby).subscribe(selectedWords -> {
+            Player drawer = choosePlayer(lobby);
+            WordsToChooseDTO wordsToChooseDTO = new WordsToChooseDTO(selectedWords, drawer.getUsername(), drawer.getSid());
+            DataWraperDTO<WordsToChooseDTO> dataWraperDTO = new DataWraperDTO<>("wordsToChoose", wordsToChooseDTO);
+            try {
+                lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperDTO));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
+    
 
-    public int calculateScore(Long answerTime, Long roundStartTimes, Long drawTime) {
-        Long guessTime = Math.max(answerTime - roundStartTimes, 0);
+    public int calculateScore(Long answerTime, Long turnStartTime, Long drawTime) {
+        System.out.println("Answer time: " + answerTime + "-"+ turnStartTime);
+        Long guessTime = Math.max(answerTime - turnStartTime, 0);
         if (guessTime > drawTime) {
             return 0;
         }
@@ -82,7 +116,14 @@ public class LobbyService {
     public void updateAndEmitScore(Player player, int score, Lobby lobby) {
         player.setScore(player.getScore() + score);
         player.setScorePerTurn(score);
-        List<Player> players = new ArrayList<>(lobby.getPlayers().values());
+
+        Map<String, Player> playersMap = lobby.getPlayers();
+        if (playersMap == null) {
+            System.err.println("Players map is null");
+            return; // Exit early to avoid null issues
+        }
+
+        List<Player> players = new ArrayList<>(playersMap.values());
         List<PlayerDTO> playerDTOs = players.stream()
                 .map(p -> new PlayerDTO(p.getUsername(), p.isAuthorized(), p.getAvatar(), p.getRole(), p.getScore(),
                         p.getScorePerTurn(), p.isAnswered()))

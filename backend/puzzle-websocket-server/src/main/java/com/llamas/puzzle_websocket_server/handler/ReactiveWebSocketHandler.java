@@ -17,6 +17,8 @@ import com.llamas.puzzle_websocket_server.command.Command;
 import com.llamas.puzzle_websocket_server.command.CommandFactory;
 import com.llamas.puzzle_websocket_server.command.CreatePrivateLobbyCommand;
 import com.llamas.puzzle_websocket_server.command.DrawingCommand;
+import com.llamas.puzzle_websocket_server.command.EditCommand;
+import com.llamas.puzzle_websocket_server.command.GameStateCommand;
 import com.llamas.puzzle_websocket_server.command.JoinPrivateLobbyCommand;
 import com.llamas.puzzle_websocket_server.command.JoinPublicLobbyCommand;
 import com.llamas.puzzle_websocket_server.command.StartGameCommand;
@@ -130,8 +132,15 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                                 Vector2DDTO vector2DDTO = objectMapper.convertValue(data, Vector2DDTO.class);
                                 return ((DrawingCommand) command).execute(session, vector2DDTO, lobbyEvent, lobbyId);
                             }
+                        }else if (command instanceof EditCommand) {
+                            String editCommand = (String) data;
+                            return ((EditCommand) command).execute(session, editCommand, lobbyEvent, lobbyId);
+                        } else if(command instanceof GameStateCommand){
+                            return ((GameStateCommand) command).execute(session, data, lobbyEvent, lobbyId);
                         }
-                        return sendError(session, "Unhandled command type: " + action);
+                        else {
+                            return sendError(session, "Unhandled command type: " + action);
+                        }
                     } catch (Exception e) {
                         return sendError(session, "Error processing payload: " + e.getMessage());
                     }
@@ -145,8 +154,9 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         Mono<Void> send = session.send(
                 lobbyEvent.getLobbyEvents()
                         .filter(msg -> !isDrawingEvent(msg) || !PlayerRole.DRAWER
-                                .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()))
-                        .map(mapHandler(session.getId()))
+                                .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole())).filter(msg -> !isGameState(msg)||msg.contains(session.getId()))
+                        .map(mapHandler(session.getId())).filter(msg->!isEditEvent(msg) || !PlayerRole.DRAWER
+                        .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()) )
                         .doOnSubscribe(s -> System.out.println("Subscribed to send stream"))
                         .doOnNext(msg -> System.out.println("Sending message: " + msg))
                         .doOnError(error -> System.err.println("Error in send: " + error.getMessage()))
@@ -172,10 +182,18 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         lobbyManager.removePlayer(lobbyId, sessionId);
     }
 
-    private boolean isDrawingEvent(String msg) {
-        return msg.contains("drawing");
+    public boolean isGameState(String msg) {
+        return msg.contains("type\":\"gameState\"");
     }
 
+    
+
+    private boolean isDrawingEvent(String msg) {
+        return msg.contains("type\":\"draw\"");
+    }
+    private boolean isEditEvent(String msg) {
+        return msg.contains("type\":\"edit\"");
+    }
     private Map<String, Object> extractActionAndData(String payload) {
         try {
             return objectMapper.readValue(payload, Map.class);
@@ -189,27 +207,34 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
             try {
                 JsonNode root = objectMapper.readTree(msg);
                 String type = root.get("type").asText();
-                ObjectNode data = (ObjectNode) root.get("data");
+                JsonNode data = root.get("data");
+    
+                if (!(data instanceof ObjectNode)) {
+                    System.err.println("Expected ObjectNode but got: " + data.getClass().getSimpleName());
+                    return msg; // Return the original message if the type is incorrect
+                }
+    
+                ObjectNode dataNode = (ObjectNode) data;
+    
                 switch (type) {
                     case "wordsToChoose" -> {
-                        if (data.get("id").asText().equals(sid)) {
-                            data.remove("id");
-                            return objectMapper.writeValueAsString(msg);
+                        if (dataNode.get("id").asText().equals(sid)) {
+                            dataNode.remove("id");
+                            return objectMapper.writeValueAsString(root);
                         } else {
-                            data.remove("id");
-                            data.putNull("words");
-                            return objectMapper.writeValueAsString(msg);
+                            dataNode.remove("id");
+                            dataNode.putNull("words");
+                            return objectMapper.writeValueAsString(root);
                         }
-
                     }
                     case "message" -> {
-                        if(data.get("id").asText().equals(sid)) {
-                            data.remove("id");
-                            data.set("isYourMessage", objectMapper.valueToTree(true));
-                            return objectMapper.writeValueAsString(msg);
+                        if (dataNode.get("id").asText().equals(sid)) {
+                            dataNode.remove("id");
+                            dataNode.set("isYourMessage", objectMapper.valueToTree(true));
+                            return objectMapper.writeValueAsString(root);
                         } else {
-                            data.remove("id");
-                            return objectMapper.writeValueAsString(msg);
+                            dataNode.remove("id");
+                            return objectMapper.writeValueAsString(root);
                         }
                     }
                     default -> {
@@ -217,10 +242,9 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                     }
                 }
             } catch (Exception e) {
-                System.out.println("Error in send stream: " + e.getMessage());
+                System.err.println("Error in send stream: " + e.getMessage());
                 return "";
             }
         };
     }
-
 }

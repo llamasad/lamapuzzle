@@ -14,8 +14,10 @@ public class DrawingUtilityFactory {
     private final Map<String, Supplier<DrawingUtility>> drawingUtilityRegister = new HashMap<>();
 
     {
-        registerDrawingUtility("Brush", BrushConcrete.class);
-        registerDrawingUtility("Eraser", EraserConcrete.class);
+        registerDrawingUtility("brush", BrushConcrete.class);
+        registerDrawingUtility("eraser", EraserConcrete.class);
+        registerDrawingUtility("pen", PenConcrete.class);   
+        registerDrawingUtility("fill", FillConcrete.class);
     }
 
     public DrawingUtility getDrawingUtility(String type, String color, int thickness) {
@@ -26,6 +28,7 @@ public class DrawingUtilityFactory {
             if (supplier != null) {
                 drawingUtility = supplier.get();
                 drawingUtility.setColor(color);
+                drawingUtility.setThickness(thickness);
                 flyweightCache.put(key, drawingUtility);
             } else {
                 throw new IllegalArgumentException("Unknown drawing utility type: " + type);

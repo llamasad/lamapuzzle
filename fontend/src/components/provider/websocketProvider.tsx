@@ -24,7 +24,10 @@ export const WebSocketProvider: React.FC<{
       : new WebSocket("ws://localhost:8080/event-emitter/publiclobby");
     
     newWs.onopen = () => onOpen(newWs);
-    newWs.onclose = () => console.log("Disconnected from WebSocket");
+    newWs.onclose = () => {
+      console.log("WebSocket closed");
+      setWs(null);
+    };
     newWs.onerror = (error) => console.error("WebSocket Error:", error);
 
     setWs(newWs);
@@ -36,7 +39,7 @@ export const WebSocketProvider: React.FC<{
     const newWs = new WebSocket("ws://localhost:8080/event-emitter/cpl:" + lobbyId);
 
     newWs.onopen = () => onOpen(newWs);
-    newWs.onclose = () => console.log("Disconnected from WebSocket");
+    newWs.onclose = () => 
     newWs.onerror = (error) => console.error("WebSocket Error:", error);
 
     setWs(newWs);

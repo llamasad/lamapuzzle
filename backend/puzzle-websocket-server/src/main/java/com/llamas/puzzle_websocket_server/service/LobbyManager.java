@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 
@@ -15,6 +16,7 @@ public class LobbyManager {
     private final LobbyService lobbyService;
     private final Map<String, Lobby> lobbies = new ConcurrentHashMap<>();
     private final Map<String,LobbyContext> lobbyContexts = new ConcurrentHashMap<>();
+    private final ObjectMapper objectMapper;
     public Lobby getOrCreateLobby(String lobbyId) {
         return lobbies.computeIfAbsent(lobbyId, id -> new Lobby(id));
     }
@@ -26,12 +28,13 @@ public class LobbyManager {
         return lobby;
     }
 
-    LobbyManager(LobbyService lobbyService) {
+    LobbyManager(LobbyService lobbyService, ObjectMapper objectMapper) {
         this.lobbyService = lobbyService;
+        this.objectMapper=objectMapper;
     }
     public LobbyContext getOrCreateLobbyContext(String lobbyId) {
         Lobby lobby=lobbies.get(lobbyId);
-        return lobbyContexts.computeIfAbsent(lobbyId, id -> new LobbyContext(lobby, lobbyService));
+        return lobbyContexts.computeIfAbsent(lobbyId, id -> new LobbyContext(lobby, lobbyService,objectMapper));
     }
     public void removeLobby(String lobbyId) {
         Lobby lobby = lobbies.remove(lobbyId);

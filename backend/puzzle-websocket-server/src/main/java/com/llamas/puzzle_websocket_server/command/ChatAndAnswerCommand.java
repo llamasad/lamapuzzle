@@ -38,24 +38,27 @@ public class ChatAndAnswerCommand implements Command<MsgDTO> {
             return Mono.empty();
         }
         String currentWord = lobbyManager.getLobby(lobbyId).getCurrentWord();
-        if (currentWord.equals(data.getText()) && !player.isAnswered()
+        if (currentWord != null && currentWord.equals(data.getText()) && !player.isAnswered()
                 && lobby.getStatus().equals(LobbyStatus.IS_PLAYING)) {
-            long answerTime = System.currentTimeMillis();
+            long answerTime = System.currentTimeMillis()/1000;
             long drawTime = lobby.getDrawTime();
-            long roundStartTimes = lobbyManager.getOrCreateLobbyContext(lobbyId).getRoundStartTimes();
+            long turnStartTime = lobbyManager.getOrCreateLobbyContext(lobbyId).getTurnStartTime();
             player.setAnswered(true);
             try {
-                lobbyEvent.publishEvent(objectMapper.writeValueAsString(data));
-                int score = lobbyService.calculateScore(answerTime, roundStartTimes, drawTime);
-                data.setText("guessed the word: " + currentWord);
+                int score = lobbyService.calculateScore(answerTime, turnStartTime, drawTime);
+                System.out.println("Score: " + score);
+                data.setName(player.getUsername());
+                data.setText("guessed the word");
                 data.setType("notify");
                 DataWraperDTO dataWraperDTO = new DataWraperDTO("message", data);
+                lobbyEvent.publishEvent(objectMapper.writeValueAsString(dataWraperDTO));
                 lobbyService.updateAndEmitScore(player, score, lobby);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else if (!player.isAnswered() && lobby.getStatus().equals(LobbyStatus.IS_PLAYING)) {
+        } else{
             try {
+                data.setName(player.getUsername());
                 DataWraperDTO dataWraperDTO = new DataWraperDTO("message", data);
                 lobbyEvent.publishEvent(objectMapper.writeValueAsString(dataWraperDTO));
 

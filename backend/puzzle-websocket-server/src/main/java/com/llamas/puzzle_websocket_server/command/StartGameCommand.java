@@ -36,7 +36,7 @@ public class StartGameCommand implements  Command<LobbySettingDTO>{
             return Mono.empty();
         }
         data.applyTo(lobby);
-        int wordsFetchCount = lobby.getWordCount()*lobby.getMaxRound();
+        int wordsFetchCount = lobby.getWordCount()*lobby.getMaxRound()*lobby.getPlayers().size();
         wordService.getRandomWord(wordsFetchCount)
             .doOnNext(words -> {
                 words.forEach(word -> {

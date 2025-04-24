@@ -5,58 +5,24 @@ import { useWebSocket } from "../provider/websocketProvider";
 import images from "@/assets/images";
 export type Player = {
   id: string;
-  name: string;
+  username: string;
   score: number;
   avatar: string;
-  role: "draw" | "guess";
+  role:  "DRAWER"|"GUESSER";
   isGuessed: boolean;
   scorePerTurn: number;
 };
 export default function PlayerSide({players, setPlayers}: {players: Player[], setPlayers:Dispatch<React.SetStateAction<Player[]>>}) {
   const { ws } = useWebSocket();
-  // Mock data for testing
-
+  
   useEffect(() => {
     if (!ws) return;
+    
     const handleMessage = (event: MessageEvent) => {
+      
       const payload = JSON.parse(event.data);
       if (payload.type === "playerList") {
         setPlayers(payload.data);
-      } else if (payload.type === "DrawRole") {
-        setPlayers((prevPlayers) =>
-          prevPlayers.map((player: Player) =>
-            player.id === payload.data
-              ? { ...player, role: "draw" }
-              : { ...player, role: "guess" }
-          )
-        );
-      } else if (payload.type === "playerJoin") {
-        setPlayers((prevPlayers) => [...prevPlayers, payload.data]);
-      } else if (payload.type === "playerLeave") {
-        setPlayers((prevPlayers) =>
-          prevPlayers.filter((player: Player) => player.id !== payload.data)
-        );
-      } else if (payload.type === "playerScore") {
-        setPlayers((prevPlayers) =>
-          prevPlayers.map((player: Player) =>
-            player.id === payload.data.id
-              ? {
-                  ...player,
-                  scorePerTurn: payload.data.score,
-                  score: player.score + payload.data.score,
-                  isGuessed: true,
-                }
-              : player
-          )
-        );
-      } else if (payload.type === "refreshLobby") {
-        setPlayers((prevPlayers) =>
-          prevPlayers.map((player: Player) => ({
-            ...player,
-            role: "guess",
-            isGuessed: false,
-          }))
-        );
       }
     };
     ws.addEventListener("message", handleMessage);
@@ -76,7 +42,7 @@ export default function PlayerSide({players, setPlayers}: {players: Player[], se
             }
           >
             <div className="w-12 h-12 mt-1">
-              <Image src={player.avatar} alt="." width={48} height={48} />
+              <Image src={player.avatar||"/test"} alt="." width={48} height={48} />
             </div>
             <div className="flex-1 min-w-0">
               <div
@@ -85,11 +51,11 @@ export default function PlayerSide({players, setPlayers}: {players: Player[], se
                   fonts.nguechNgoacFont
                 }
               >
-                {player.name}
+                {player.username}
               </div>
               <div className="text-sm text-center ">{player.score}</div>
             </div>
-            {player.role === "draw" && (
+            {player.role === "DRAWER" && (
               <Image
                 src={images.pencil}
                 width={16}

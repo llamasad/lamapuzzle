@@ -58,19 +58,24 @@ export default function GameStart({
               connect((ws) => {
                 setIsLoading(true);
                 setGameStatus("playing");
+
+                ws.send(
+                  JSON.stringify({
+                    action: "GAME_STATE",
+                  })
+                );
                 ws.send(
                   JSON.stringify({
                     action: "JOIN_PUBLIC_LOBBY",
                     data: {
-                      username: username,
+                      username: username ? username : ramdomUserName(),
                       isAuthorized: false,
                     },
                   })
                 );
                 setTimeout(() => {
                   setIsLoading(false);
-                }
-                , 1000);
+                }, 1000);
               })
             }
             className="m-auto hover:scale-101 cursor-pointer"
@@ -96,15 +101,14 @@ export default function GameStart({
                 JSON.stringify({
                   action: "CREATE_PRIVATE_LOBBY",
                   data: {
-                    username: username,
+                    username: username ? username : ramdomUserName(),
                     isAuthorized: false,
                   },
                 })
               );
               setTimeout(() => {
                 setIsLoading(false);
-              }
-              , 1000);
+              }, 1000);
             })
           }
           className="m-auto hover:scale-101 cursor-pointer"
@@ -117,3 +121,10 @@ export default function GameStart({
     </div>
   );
 }
+
+const ramdomUserName = () => {
+  const prefix = "unknown#";
+  const suffix = Math.floor(Math.random() * 10000);
+  const randomName = prefix + suffix;
+  return randomName;
+};

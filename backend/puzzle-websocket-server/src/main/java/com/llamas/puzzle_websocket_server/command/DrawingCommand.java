@@ -1,5 +1,6 @@
 package com.llamas.puzzle_websocket_server.command;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.web.reactive.socket.WebSocketSession;
@@ -47,19 +48,19 @@ public class DrawingCommand implements Command<Object> {
         
         try {
             List<Vector2D> temporaryPoints = lobbyManager.getLobby(lobbyId).getSessionTemporaryPoints();
-            System.out.println("Temporary points: " + temporaryPoints);
     
             if (data instanceof Vector2DDTOWithStatus) {
                 Vector2DDTOWithStatus vector2DDTOWithStatus = (Vector2DDTOWithStatus) data;
-                System.out.println("Received Vector2DDTOWithStatus: " + vector2DDTOWithStatus);
                 temporaryPoints.add(vector2DDTOWithStatus.toVector2D());
     
                 if (vector2DDTOWithStatus.getStatus() == Status.END) {
-                    System.out.println("Status is END, processing stroke");
+                    System.out.println("Status is END, processing stroke"+vector2DDTOWithStatus);
                     DrawingUtility drawingUtility = drawingUtilityFactory.getDrawingUtility(vector2DDTOWithStatus.getToolType(), vector2DDTOWithStatus.getColor(), vector2DDTOWithStatus.getThickness());
-                    Stroke<DrawingUtility> stroke = (Stroke<DrawingUtility>) drawingUtility.draw(temporaryPoints);
-                    strokeStackManager.getStrokeStackForRoom(session.getId()).addStroke(stroke);
+                    System.out.println("DrawingUtility: " + drawingUtility.getThickness());
+                    Stroke<DrawingUtility> stroke = (Stroke<DrawingUtility>) drawingUtility.draw(new ArrayList(temporaryPoints));
+                    strokeStackManager.getStrokeStackForRoom(lobbyId).addStroke(stroke);
                     temporaryPoints.clear();
+                    System.out.println("strokeStackManager: " + strokeStackManager.getStrokeStackForRoom(lobbyId).getUndoStack());
                 }
                 
                 DataWraperDTO dataWrapper = new DataWraperDTO("draw", vector2DDTOWithStatus);
@@ -87,3 +88,5 @@ public class DrawingCommand implements Command<Object> {
         }
     }
 }
+
+

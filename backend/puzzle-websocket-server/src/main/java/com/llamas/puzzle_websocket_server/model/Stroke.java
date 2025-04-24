@@ -14,9 +14,17 @@ public class Stroke<T extends DrawingUtility> {
     private final Class<T> type;
 
     public StrokeDTO toStrokeDTO() {
-        return new StrokeDTO(this.getToolType(),tool.getColor() ,positions);
+        return new StrokeDTO(this.getToolType(),tool.getColor() ,positions,tool.getThickness());
     }    
     private String getToolType() {
         return type.getSimpleName().replace("Concrete", "");
+    }
+
+    @Override
+    public String toString() {
+        return "Stroke{" +
+                "drawingUtility=" + tool +
+                ", points=" + positions +
+                '}';
     }
 }

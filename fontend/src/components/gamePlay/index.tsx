@@ -25,7 +25,8 @@ export default function GamePlay({
   const [players, setPlayers] = useState<Player[]>([]);
   const [onDrawRole, setOnDrawRole] = useState(false);
   const [word, setWord] = useState<string>("Waiting");
-
+  const [isWaitingForWord, setIsWaitingForWord] = useState(false);
+  
   return (
     <div className="mt-[-40px] m-auto xl:w-[1256px] pb-10">
       <div className="grid grid-cols-48 gap-2 h-[588px] mt-2">
@@ -33,7 +34,7 @@ export default function GamePlay({
           <PlayerSide players={players} setPlayers={setPlayers} />
         </div>
         <div className="col-span-31 space-y-2 h-[588px] overflow-hidden ">
-          <GuessHeader onDrawRole={onDrawRole} setWord={setWord} word={word} />
+          <GuessHeader onDrawRole={onDrawRole} setWord={setWord} word={word} setIsWaitingForWord={setIsWaitingForWord}/>
 
           <div
             className={` 
@@ -44,6 +45,8 @@ export default function GamePlay({
             `}
           >
             <DrawingPlane
+              setIsWaitingForWord={setIsWaitingForWord}
+              isWaitingForWord={isWaitingForWord}
               players={players}
               word={word}
               setWord={setWord}

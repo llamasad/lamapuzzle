@@ -19,10 +19,12 @@ public class Lobby extends LobbySetting{
     private LobbyStatus status = LobbyStatus.PENDING_LOBBY;
     private final Map<String, Player> players = new HashMap<>();
     private final Queue<String> drawerQueue = new LinkedList<>();
-    private List<String> words;
-    private List<String> customWords;
+    private List<String> words=new ArrayList<>();
+    private List<String> customWords = new ArrayList<>();
     private String currentWord;
+    private String hintWord;
     private List<Vector2D> sessionTemporaryPoints= new ArrayList<>();
+
 
 
     public Lobby(String id, int maxPlayer, int drawTime, int wordCount, int maxRound, Language language, GameMode gameMode, boolean isPrivate, int hints, int drawingTime, boolean isUseCustomWords) {  

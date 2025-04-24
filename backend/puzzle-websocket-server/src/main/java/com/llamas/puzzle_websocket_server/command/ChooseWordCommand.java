@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.StartTurnDTO;
 import com.llamas.puzzle_websocket_server.service.LobbyContext;
@@ -27,6 +28,10 @@ public class ChooseWordCommand implements Command<String> {
     public Mono<Void> execute(WebSocketSession session, String data, LobbyEvent lobbyEvent, String lobbyId) {
         Lobby lobby = lobbyManager.getLobby(lobbyId);
         LobbyContext lobbyContext = lobbyManager.getOrCreateLobbyContext(lobbyId);
+        if(lobby.getStatus() == LobbyStatus.IS_PLAYING) {
+            System.out.println("Lobby is not in WAITING_FOR_WORD status, ignoring command");
+            return Mono.empty();
+        }
         if (lobby != null) {
             int hints = Math.min(lobby.getHints(), data.length() - 1);
             char[] revealedWord = new char[data.length()];
@@ -42,11 +47,14 @@ public class ChooseWordCommand implements Command<String> {
             }
             String revealedWordStr = new String(revealedWord);
             lobbyContext.startRound();
+            System.out.println("Starting round " + lobby.getCurrentRound() + " with word: " + data);
             lobby.getPlayers().values().stream()
                     .filter(player -> player.getRole() == PlayerRole.DRAWER)
                     .findFirst()
                     .ifPresent(player -> {
                         lobby.setCurrentWord(data);
+                        lobby.setHintWord(revealedWordStr);
+                        System.out.println("Current word: " + lobby.getCurrentWord());
                         StartTurnDTO startTurnDTO = new StartTurnDTO(revealedWordStr, lobby.getDrawTime(), lobby.getCurrentRound(), lobby.getMaxRound());
                         DataWraperDTO dataWrapper= new DataWraperDTO("guessWord", startTurnDTO);
                         try {

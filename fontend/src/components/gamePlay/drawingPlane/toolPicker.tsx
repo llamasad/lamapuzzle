@@ -18,7 +18,7 @@ export default function ToolPicker({ selectedTool, setSelectedTool ,color }: {
 }) {
 
   return (
-    <div className="mb-2 flex flex-col items-center gap-2">
+    <div className="mb-2 flex flex-col items-center gap-2 z-30">
       {tools.map((tool) => (
         <label key={tool.name} className="cursor-pointer">
           <input

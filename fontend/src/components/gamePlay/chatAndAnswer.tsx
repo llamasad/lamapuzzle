@@ -9,73 +9,36 @@ interface Message {
   avatar: string;
   name: string;
   type:"message"|"notify";
-  color: string;
   isYourMessage: boolean;
 }
 
 export default function ChatAndAnswer({ players }: { players: Player[] }) {
   const { ws } = useWebSocket();
-  const [messages, setMessages] = useState<Array<Message>>([
-    {
-      text: "Hello",
-      avatar: "/test",
-      name: "Nguyễn Ngọc Nghĩa",
-      type:"message",
-      color: "red",
-      isYourMessage: true,
-    },
-    {
-      text: "Joined lobby",
-      avatar: "/test",
-      name: "Nguyễn Ngọc Nghĩa",
-      type:"notify",
-      color: "red",
-      isYourMessage: false,
-    },
-    {
-      text: "Hello",
-      avatar: "/test",
-      name: "Nguyễn Ngọc Nghĩa",
-      type:"message",
-      color: "red",
-      isYourMessage: false,
-    },
-    {
-      text: "Hello",
-      avatar: "/test",
-      name: "Nguyễn Ngọc Nghĩa",
-      type:"notify",
-      color: "red",
-      isYourMessage: false,
-    },
-    {
-      text: "Hello",
-      avatar: "/test",
-      name: "Nguyễn Ngọc Nghĩa",
-      type:"notify",
-      color: "red",
-      isYourMessage: false,
-    },
-  ]);
+  const [messages, setMessages] = useState<Array<Message>>([]);
 
   useEffect(() => {
     if (!ws) return;
     const handleMessage = (event: MessageEvent) => {
       const payload = JSON.parse(event.data);
+      
       if (payload.type === "message") {
         // Handle chat message
         const message: Message = {
-          text: payload.text,
-          avatar: payload.avatar,
-          name: payload.name,
-          type:"message",
-          color: payload.color,
-          isYourMessage: payload.isYourMessage,
+          text: payload.data.text,
+          avatar: payload.data.avatar,
+          name: payload.data.name,
+          type:payload.data.type,
+          isYourMessage: payload.data.isYourMessage,
         };
+        
         setMessages((prevMessages) => [...prevMessages, message]);
       }
     };
-  });
+    ws.addEventListener("message", handleMessage);
+    return () => {
+      ws.removeEventListener("message", handleMessage);
+    }
+  }, [ws]);
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -113,7 +76,7 @@ export default function ChatAndAnswer({ players }: { players: Player[] }) {
                     "text-gray-500 text-xs w-full text-center"
                   }
                 >
-                  {msg.text}
+                  {msg.name+ " "+msg.text}
                 </div>
               </div>
             );
@@ -125,6 +88,28 @@ export default function ChatAndAnswer({ players }: { players: Player[] }) {
       <div className="w-19/20">
         <input
           type="text"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && ws) {
+              const input = e.target as HTMLInputElement;
+              const text = input.value;
+              if (text.trim() !== "") {
+                const message: Message = {
+                  text: text,
+                  avatar: players[0]?.avatar || "/test",
+                  name: "",
+                  type:"message",
+                  isYourMessage: false,
+                };
+                ws.send(
+                  JSON.stringify({
+                    action: "CHAT_AND_ANSWER",
+                    data:message,
+                  })
+                );
+                input.value = "";
+              }
+            }
+          }}
           placeholder="Chat or answer"
           className="h-8 text-sm px-1 w-full outline-none border border-gray-300 my-1.5 ml-1.5"
         />

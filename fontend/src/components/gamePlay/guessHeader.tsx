@@ -7,10 +7,12 @@ export default function GuessHeader({
   word,
   setWord,
   onDrawRole,
+  setIsWaitingForWord,
 }: {
   word: string;
   setWord: (word: string) => void;
   onDrawRole: boolean;
+  setIsWaitingForWord: (isWaiting: boolean) => void;
 }) {
   const { ws } = useWebSocket();
   const [countdown, setCountdown] = useState<number>(0);
@@ -20,15 +22,20 @@ export default function GuessHeader({
     const handleMessage = (event: MessageEvent) => {
       const payload = JSON.parse(event.data);
       if (payload.type === "guessWord") {
+        setIsWaitingForWord(false);
         !onDrawRole && setWord(payload.data.word);
         setCountdown(payload.data.drawTime);
+      } else if (payload.type==="revealAndSum"){
+        setIsWaitingForWord(false);
+        setWord(payload.data);
+        setCountdown(0);
       }
     };
     ws.addEventListener("message", handleMessage);
     return () => {
       ws.removeEventListener("message", handleMessage);
     };
-  }, [ws]);
+  }, [ws,onDrawRole]);
 
   useEffect(() => {
     if (countdown <= 0) return; 
@@ -53,10 +60,8 @@ export default function GuessHeader({
           <span>{countdown}</span>
         </div>
       </div>
-
-      {/* Guess Word */}
       <div className="flex gap-1 justify-center items-center flex-grow text-center">
-        {word.split("").map((letter, index) => (
+        {word&&word.split("").map((letter, index) => (
           <span
             key={index}
             className={`text-xl font-bold ${
@@ -67,8 +72,6 @@ export default function GuessHeader({
           </span>
         ))}
       </div>
-
-      {/* Placeholder for spacing */}
       <div className="w-11 h-11"></div>
     </div>
   );
