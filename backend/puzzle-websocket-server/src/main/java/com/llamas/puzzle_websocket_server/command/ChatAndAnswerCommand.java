@@ -29,24 +29,27 @@ public class ChatAndAnswerCommand implements Command<MsgDTO> {
 
     @Override
     public Mono<Void> execute(WebSocketSession session, MsgDTO data, LobbyEvent lobbyEvent, String lobbyId) {
-        Player player = lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId());
-        PlayerRole playerRole = player.getRole();
         Lobby lobby = lobbyManager.getLobby(lobbyId);
+        Player player = lobby.getPlayers().get(session.getId());
+        PlayerRole playerRole = player.getRole();
+        String currentWord = lobbyManager.getLobby(lobbyId).getCurrentWord();
+
         data.setId(session.getId());
         if (!PlayerRole.GUESSER.equals(playerRole)) {
             System.out.println("Player is not a guesser , ignoring command");
             return Mono.empty();
         }
-        String currentWord = lobbyManager.getLobby(lobbyId).getCurrentWord();
         if (currentWord != null && currentWord.equals(data.getText()) && !player.isAnswered()
                 && lobby.getStatus().equals(LobbyStatus.IS_PLAYING)) {
-            long answerTime = System.currentTimeMillis()/1000;
+
+            long answerTime = System.currentTimeMillis() / 1000;
             long drawTime = lobby.getDrawTime();
             long turnStartTime = lobbyManager.getOrCreateLobbyContext(lobbyId).getTurnStartTime();
             player.setAnswered(true);
             try {
                 int score = lobbyService.calculateScore(answerTime, turnStartTime, drawTime);
                 System.out.println("Score: " + score);
+                String message = player.getUsername() + " guessed the word: " + currentWord;
                 data.setName(player.getUsername());
                 data.setText("guessed the word");
                 data.setType("notify");
@@ -56,13 +59,28 @@ public class ChatAndAnswerCommand implements Command<MsgDTO> {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } else{
+        } else {
+            if (data.getText().isEmpty()) {
+                return Mono.empty();
+            }
+            if (currentWord!=null&&data.getText().contains(currentWord) && player.isAnswered()) {
+                //
+                StringBuilder maskedWord = new StringBuilder();
+                for (int i = 0; i < currentWord.length(); i++) {
+                    maskedWord.append("*");
+                }
+
+                data.setText(data.getText().replace(currentWord, maskedWord.toString()));
+
+            }
             try {
-                data.setName(player.getUsername());
+
+                data.setName(player.getUsername().toString());
                 DataWraperDTO dataWraperDTO = new DataWraperDTO("message", data);
                 lobbyEvent.publishEvent(objectMapper.writeValueAsString(dataWraperDTO));
 
             } catch (Exception e) {
+                System.out.println("Error while sending message: " + e.getMessage());
                 e.printStackTrace();
             }
         }

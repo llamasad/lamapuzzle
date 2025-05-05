@@ -15,4 +15,6 @@ public class LobbySetting {
     private boolean isPrivate;
     private int hints;
     private boolean isUseCustomWords;
+
+   
 }

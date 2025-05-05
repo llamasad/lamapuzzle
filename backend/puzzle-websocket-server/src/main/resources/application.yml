@@ -1,14 +1,17 @@
 spring:
   application:
     name: puzzle-websocket-server
-  redis:
-    host: localhost
-    port: 6379
-    r2dbc:
-      url: r2dbc:postgresql://localhost:5432/puzzle_db
-      username: postgres
-      password: yourpassword
-
+  r2dbc:
+      url: r2dbc:postgresql://localhost:5433/lamapuz
+      username: lama
+      password: secret
+  pool:
+    enabled: true  
+  datasource:
+    driver-class-name: org.postgresql.Driver  
+  sql:
+    init:
+      platform: none 
 logging:
   level:
     root: DEBUG

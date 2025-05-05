@@ -4,6 +4,7 @@ import fonts from "@/assets/fonts";
 import { useState } from "react";
 import { useWebSocket } from "./provider/websocketProvider";
 import { Status } from "@/app/page";
+import { v4 as uuidv4 } from "uuid";
 
 export interface playerStart {
   username: string;
@@ -15,14 +16,18 @@ export default function GameStart({
   setGameStatus,
   isLoading,
   setIsLoading,
+  privateLobbyId,
+  setPrivateLobbyId,
 }: {
   gameStatus: Status;
   setGameStatus: (status: Status) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  privateLobbyId: string | null;
+  setPrivateLobbyId: (lobbyId: string | null) => void;
 }) {
   const [username, setUsername] = useState("");
-  const { connect } = useWebSocket();
+  const { connect, createLobby } = useWebSocket();
   return (
     <div className="flex flex-col items-center ">
       <Image
@@ -93,8 +98,10 @@ export default function GameStart({
           />
         </div>
         <Image
-          onClick={() =>
-            connect((ws) => {
+          onClick={() => {
+            let uuid = shortUUID();
+            setPrivateLobbyId(uuid);
+            createLobby((ws) => {
               setIsLoading(true);
               setGameStatus("lobby");
               ws.send(
@@ -109,8 +116,8 @@ export default function GameStart({
               setTimeout(() => {
                 setIsLoading(false);
               }, 1000);
-            })
-          }
+            }, uuid);
+          }}
           className="m-auto hover:scale-101 cursor-pointer"
           width={262}
           height={100}
@@ -128,3 +135,13 @@ const ramdomUserName = () => {
   const randomName = prefix + suffix;
   return randomName;
 };
+
+function shortUUID() {
+  const uuid = uuidv4().replace(/-/g, "");
+  const matches = uuid.match(/.{1,2}/g) || [];
+  const bytes = Uint8Array.from(matches.map((byte) => parseInt(byte, 16)));
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.Player;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 
 
@@ -76,11 +77,12 @@ public class LobbyManager {
         return lobbies.get(lobbyId);
     }
 
-    public void removePlayer(String lobbyId, String playerId) {
+    public Player removePlayer(String lobbyId, String playerId) {
         Lobby lobby = lobbies.get(lobbyId);
         if (lobby != null) {
-            lobby.getPlayers().remove(playerId);
+            return lobby.getPlayers().remove(playerId);
         }
+        return null;
     }
     
 }

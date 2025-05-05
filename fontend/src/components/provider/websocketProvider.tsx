@@ -8,6 +8,7 @@ const WebSocketContext = createContext<{
   ws: WebSocket | null;
   connect: (onOpen: (ws: WebSocket) => void) => void;
   disconnect: () => void;
+  createLobby: (onOpen: (ws: WebSocket) => void,lobbyId:String) => void;
 } | null>(null);
 
 export const WebSocketProvider: React.FC<{
@@ -25,7 +26,7 @@ export const WebSocketProvider: React.FC<{
     
     newWs.onopen = () => onOpen(newWs);
     newWs.onclose = () => {
-      console.log("WebSocket closed");
+      
       setWs(null);
     };
     newWs.onerror = (error) => console.error("WebSocket Error:", error);
@@ -33,9 +34,8 @@ export const WebSocketProvider: React.FC<{
     setWs(newWs);
   };
   
-  const createLobby=(onOpen: (ws: WebSocket) => void)=>{
+  const createLobby=(onOpen: (ws: WebSocket) => void,lobbyId:String)=>{
     if (ws) return;
-    const lobbyId =shortUUID();
     const newWs = new WebSocket("ws://localhost:8080/event-emitter/cpl:" + lobbyId);
 
     newWs.onopen = () => onOpen(newWs);
@@ -51,7 +51,7 @@ export const WebSocketProvider: React.FC<{
   };
 
   return (
-    <WebSocketContext.Provider value={{ ws, connect, disconnect }}>
+    <WebSocketContext.Provider value={{ ws, connect, disconnect ,createLobby }}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -65,9 +65,3 @@ export const useWebSocket = () => {
 };
 
 
-function shortUUID() {
-  const uuid = uuidv4().replace(/-/g, '');
-  const matches = uuid.match(/.{1,2}/g) || [];
-  const bytes = Uint8Array.from(matches.map(byte => parseInt(byte, 16)));
-  return btoa(String.fromCharCode(...bytes)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-}

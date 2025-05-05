@@ -51,6 +51,8 @@ public class JoinPublicLobbyCommand implements Command<PlayerDTO> {
                 .toList();
         DataWraperDTO<List<PlayerDTO>> dataWraperPlayerDTO = new DataWraperDTO("playerList", playerDTOs);
 
+  
+
         try {
             lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperDTO));
             lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperPlayerDTO));

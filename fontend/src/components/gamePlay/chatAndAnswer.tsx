@@ -19,6 +19,7 @@ export default function ChatAndAnswer({ players }: { players: Player[] }) {
   useEffect(() => {
     if (!ws) return;
     const handleMessage = (event: MessageEvent) => {
+      console.log(event.data);
       const payload = JSON.parse(event.data);
       
       if (payload.type === "message") {
@@ -96,7 +97,7 @@ export default function ChatAndAnswer({ players }: { players: Player[] }) {
                 const message: Message = {
                   text: text,
                   avatar: players[0]?.avatar || "/test",
-                  name: "",
+                  name: players[0]?.username || "Guest",
                   type:"message",
                   isYourMessage: false,
                 };

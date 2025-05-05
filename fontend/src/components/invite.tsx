@@ -19,8 +19,12 @@ export default function Invite({ lobbyId ,setGameStatus,setIsLoading}: { lobbyId
                 })
             );
         });
+        setTimeout(() => {
+            setIsLoading(false);
+        }
+        , 1000);
     }
-    , [lobbyId,ws]);
+    , [lobbyId]);
 
   return "";
 }

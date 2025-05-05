@@ -9,5 +9,6 @@ public enum Action {
     JOIN_PRIVATE_LOBBY,
     CREATE_PRIVATE_LOBBY,
     EDIT,
-    GAME_STATE
+    GAME_STATE,
+    PLAY_AGAIN
 }

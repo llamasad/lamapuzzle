@@ -9,8 +9,9 @@ export type Player = {
   score: number;
   avatar: string;
   role:  "DRAWER"|"GUESSER";
-  isGuessed: boolean;
+  answered: boolean;
   scorePerTurn: number;
+  authorized: boolean;
 };
 export default function PlayerSide({players, setPlayers}: {players: Player[], setPlayers:Dispatch<React.SetStateAction<Player[]>>}) {
   const { ws } = useWebSocket();
@@ -22,6 +23,7 @@ export default function PlayerSide({players, setPlayers}: {players: Player[], se
       
       const payload = JSON.parse(event.data);
       if (payload.type === "playerList") {
+        console.log(payload.data);
         setPlayers(payload.data);
       }
     };
@@ -33,12 +35,12 @@ export default function PlayerSide({players, setPlayers}: {players: Player[], se
 
   return (
     <div className="bg-white shadow shadow-gray-300 h overflow-y-auto h-[588px]">
-      {players.map((player, id) => {
+      {players.reverse().map((player, id) => {
         return (
           <div
             key={id}
             className={
-              "h-14 flex relative " + (player.isGuessed ? "bg-green-200" : "")
+              "h-14 flex relative " + (player.answered ? "bg-green-200" : "")
             }
           >
             <div className="w-12 h-12 mt-1">

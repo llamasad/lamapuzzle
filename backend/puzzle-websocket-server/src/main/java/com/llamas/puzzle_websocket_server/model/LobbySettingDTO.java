@@ -1,9 +1,13 @@
 package com.llamas.puzzle_websocket_server.model;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
+import com.llamas.puzzle_websocket_server.model.GameMode;
+import com.llamas.puzzle_websocket_server.model.Language;
 
 
 @Data
@@ -17,9 +21,11 @@ public class LobbySettingDTO {
     private boolean isPrivate;
     private int hints;
     private boolean isUseCustomWords;
+    private List<String> customWords;
 
     @JsonCreator
-    public LobbySettingDTO(@JsonProperty("maxPlayer") int maxPlayer, @JsonProperty("drawTime") int drawTime, @JsonProperty("workCount") int workCount, @JsonProperty("language") Language language, @JsonProperty("gameMode") GameMode gameMode, @JsonProperty("isPrivate") boolean isPrivate, @JsonProperty("hints") int hints, @JsonProperty("isUseCustomWords") boolean isUseCustomWords, @JsonProperty("maxRound") int maxRound) {
+    public LobbySettingDTO(@JsonProperty("maxPlayer") int maxPlayer, @JsonProperty("drawTime") int drawTime, @JsonProperty("workCount") int workCount, @JsonProperty("language") Language language, @JsonProperty("gameMode") GameMode gameMode, @JsonProperty("isPrivate") boolean isPrivate, @JsonProperty("hints") int hints, @JsonProperty("isUseCustomWords") boolean isUseCustomWords, @JsonProperty("maxRound") int maxRound, @JsonProperty("customWords") List<String> customWords) {
+        this.customWords = customWords;
         this.maxPlayer = maxPlayer;
         this.drawTime = drawTime;
         this.wordCount = wordCount;
@@ -41,6 +47,7 @@ public class LobbySettingDTO {
         lobby.setHints(hints);
         lobby.setUseCustomWords(isUseCustomWords);
         lobby.setMaxRound(maxRound);    
+        lobby.setCustomWords(customWords);
     }
 
 }

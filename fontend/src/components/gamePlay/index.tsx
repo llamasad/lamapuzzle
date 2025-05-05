@@ -10,23 +10,46 @@ import GuessHeader from "./guessHeader";
 import { Status } from "@/app/page";
 import { Player } from "./playerSide";
 import GameSettings from "./gameSettings";
+import { useWebSocket } from "../provider/websocketProvider";
 
 export default function GamePlay({
   gameStatus,
   setGameStatus,
   isLoading,
   setIsLoading,
+  privateLobbyId,
+  setPrivateLobbyId,
 }: {
   gameStatus: Status;
   setGameStatus: (status: Status) => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  privateLobbyId: string | null;
+  setPrivateLobbyId: (lobbyId: string | null) => void;
 }) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [onDrawRole, setOnDrawRole] = useState(false);
   const [word, setWord] = useState<string>("Waiting");
   const [isWaitingForWord, setIsWaitingForWord] = useState(false);
   
+  const { ws } = useWebSocket();
+
+  useEffect(() => {
+    if (!ws) return;
+    const handleMessage = (event: MessageEvent) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === "lobbyStatus") {
+        if (payload.data === "ROUND_IN_PROGRESS") {
+          setGameStatus("playing");
+        }
+      }
+    };
+    ws.addEventListener("message", handleMessage);
+    return () => {
+      ws.removeEventListener("message", handleMessage);
+    };
+  }, [ws, onDrawRole]);
+
   return (
     <div className="mt-[-40px] m-auto xl:w-[1256px] pb-10">
       <div className="grid grid-cols-48 gap-2 h-[588px] mt-2">
@@ -34,7 +57,12 @@ export default function GamePlay({
           <PlayerSide players={players} setPlayers={setPlayers} />
         </div>
         <div className="col-span-31 space-y-2 h-[588px] overflow-hidden ">
-          <GuessHeader onDrawRole={onDrawRole} setWord={setWord} word={word} setIsWaitingForWord={setIsWaitingForWord}/>
+          <GuessHeader
+            onDrawRole={onDrawRole}
+            setWord={setWord}
+            word={word}
+            setIsWaitingForWord={setIsWaitingForWord}
+          />
 
           <div
             className={` 
@@ -53,11 +81,16 @@ export default function GamePlay({
               onDrawRole={onDrawRole}
               setOnDrawRole={setOnDrawRole}
             />
-            {gameStatus==="lobby"&&<GameSettings setGameStatus={setGameStatus} />}
+            {gameStatus === "lobby" && (
+              <GameSettings
+                privateLobbyId={privateLobbyId}
+                setGameStatus={setGameStatus}
+              />
+            )}
           </div>
         </div>
         <div className="bg-white shadow shadow-gray-300 col-span-10">
-          <ChatAndAnswer players={players}/>
+          <ChatAndAnswer players={players} />
         </div>
       </div>
     </div>

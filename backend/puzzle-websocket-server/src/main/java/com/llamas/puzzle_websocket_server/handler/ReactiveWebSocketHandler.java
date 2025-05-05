@@ -1,5 +1,7 @@
 package com.llamas.puzzle_websocket_server.handler;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -21,19 +23,25 @@ import com.llamas.puzzle_websocket_server.command.EditCommand;
 import com.llamas.puzzle_websocket_server.command.GameStateCommand;
 import com.llamas.puzzle_websocket_server.command.JoinPrivateLobbyCommand;
 import com.llamas.puzzle_websocket_server.command.JoinPublicLobbyCommand;
+import com.llamas.puzzle_websocket_server.command.PlayAgainCommand;
 import com.llamas.puzzle_websocket_server.command.StartGameCommand;
 import com.llamas.puzzle_websocket_server.flyweight.DrawingUtilityFactory;
 import com.llamas.puzzle_websocket_server.model.Action;
+import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.LobbySettingDTO;
 import com.llamas.puzzle_websocket_server.model.MsgDTO;
+import com.llamas.puzzle_websocket_server.model.Player;
 import com.llamas.puzzle_websocket_server.model.PlayerDTO;
 import com.llamas.puzzle_websocket_server.model.PlayerRole;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTO;
 import com.llamas.puzzle_websocket_server.model.Vector2DDTOWithStatus;
 import com.llamas.puzzle_websocket_server.service.LobbyEvent;
 import com.llamas.puzzle_websocket_server.service.LobbyManager;
+import com.llamas.puzzle_websocket_server.service.LobbyService;
 import com.llamas.puzzle_websocket_server.service.StrokeStackManager;
+
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 
 import reactor.core.publisher.Mono;
 
@@ -45,9 +53,12 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
     private final LobbyManager lobbyManager;
     private final ObjectMapper objectMapper;
     private final CommandFactory commandFactory;
+    private final LobbyService lobbyService;
+
 
     public ReactiveWebSocketHandler(StrokeStackManager strokeStackManager, DrawingUtilityFactory drawingUtilityFactory,
-            LobbyManager lobbyManager, ObjectMapper objectMapper, CommandFactory commandFactory) {
+            LobbyManager lobbyManager, ObjectMapper objectMapper, CommandFactory commandFactory, LobbyService lobbyService) {
+        this.lobbyService = lobbyService;
         this.strokeStackManager = strokeStackManager;
         this.drawingUtilityFactory = drawingUtilityFactory;
         this.lobbyManager = lobbyManager;
@@ -62,20 +73,20 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         System.out.println("Path: " + path);
         System.out.println("Suffix: " + suffix);
         final String lobbyId;
-        
+
         if (suffix.equals("publiclobby")) {
             lobbyId = lobbyManager.getPublicLobby().getId();
 
         } else if (suffix.startsWith("cpl:")) {
             // path is cpl:id
-            lobbyId = lobbyManager.getOrCreateLobby(suffix.substring(4)).getId();
-
+            lobbyId = lobbyManager.createPrivateLobby(suffix.substring(4)).getId();
+            System.out.println("Lobby ID: " + lobbyId);
             // lobbyManager
 
         } else {
             lobbyId = suffix;
         }
-        System.out.println("Lobby ID: " + lobbyId);
+        System.out.println("Lobby ID2: " + lobbyId);
         Lobby lobby = lobbyManager.getLobby(lobbyId);
 
         if (lobby == null) {
@@ -132,12 +143,17 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                                 Vector2DDTO vector2DDTO = objectMapper.convertValue(data, Vector2DDTO.class);
                                 return ((DrawingCommand) command).execute(session, vector2DDTO, lobbyEvent, lobbyId);
                             }
-                        }else if (command instanceof EditCommand) {
+                        } else if (command instanceof EditCommand) {
                             String editCommand = (String) data;
                             return ((EditCommand) command).execute(session, editCommand, lobbyEvent, lobbyId);
-                        } else if(command instanceof GameStateCommand){
+                        } else if (command instanceof GameStateCommand) {
                             return ((GameStateCommand) command).execute(session, data, lobbyEvent, lobbyId);
-                        }
+                        }else if(command instanceof  PlayAgainCommand ){
+                            String msg = (String) data;
+
+                            return ((PlayAgainCommand) command).execute(session, msg, lobbyEvent, lobbyId);
+                        } 
+                        
                         else {
                             return sendError(session, "Unhandled command type: " + action);
                         }
@@ -154,9 +170,10 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         Mono<Void> send = session.send(
                 lobbyEvent.getLobbyEvents()
                         .filter(msg -> !isDrawingEvent(msg) || !PlayerRole.DRAWER
-                                .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole())).filter(msg -> !isGameState(msg)||msg.contains(session.getId()))
-                        .map(mapHandler(session.getId())).filter(msg->!isEditEvent(msg) || !PlayerRole.DRAWER
-                        .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()) )
+                                .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()))
+                        .filter(msg -> !isGameState(msg) || msg.contains(session.getId()))
+                        .map(mapHandler(session.getId())).filter(msg -> !isEditEvent(msg) || !PlayerRole.DRAWER
+                                .equals(lobbyManager.getLobby(lobbyId).getPlayers().get(session.getId()).getRole()))
                         .doOnSubscribe(s -> System.out.println("Subscribed to send stream"))
                         .doOnNext(msg -> System.out.println("Sending message: " + msg))
                         .doOnError(error -> System.err.println("Error in send: " + error.getMessage()))
@@ -166,8 +183,9 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         return Mono.zip(send, receive)
                 .doOnError(error -> System.err.println("Error in WebSocket handling: " + error.getMessage()))
                 .doOnTerminate(() -> {
+
                     System.out.println("WebSocket session terminated");
-                    removeSession(session.getId(), lobbyId);
+                    handlePlayerLeaveRoom(lobbyId, session.getId(), lobby, lobbyEvent);
                 })
                 .then();
     }
@@ -177,23 +195,71 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
         return session.send(Mono.just(session.textMessage("{\"error\": \"" + errorMessage + "\"}"))).then();
     }
 
-    public void removeSession(String sessionId, String lobbyId) {
+    public void handlePlayerLeaveRoom(String lobbyId, String sessionId, Lobby lobby, LobbyEvent lobbyEvent) {
         lobbyManager.getLobby(lobbyId).getSessionTemporaryPoints().clear();
-        lobbyManager.removePlayer(lobbyId, sessionId);
+        Player player = lobbyManager.removePlayer(lobbyId, sessionId);
+
+        if (player != null && player.getRole().equals(PlayerRole.DRAWER)) {
+            System.out.println("Round ended");
+            lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
+            try {
+                if (lobby.getCurrentRound() >= lobby.getMaxRound() && lobby.getDrawerQueue().isEmpty()) {
+                    lobby.setStatus(LobbyStatus.FINISHED);
+                    lobbyService.flushLobby(lobby);
+
+                } else {
+
+                    List<Player> players = new ArrayList<>(lobby.getPlayers().values());
+                    List<PlayerDTO> playerDTOs = players.stream()
+                            .map(p -> new PlayerDTO(p.getUsername(), p.isAuthorized(), p.getAvatar(), p.getRole(),
+                                    p.getScore(),
+                                    p.getScorePerTurn(), p.isAnswered()))
+                            .toList();
+                    lobbyService.refreshLobbyEachTurn(lobby);
+
+                    lobby.getSink().tryEmitNext(
+                            objectMapper.writeValueAsString(new DataWraperDTO<>("playerList", playerDTOs)));
+                    lobby.getSink().tryEmitNext(objectMapper
+                            .writeValueAsString(new DataWraperDTO<>("revealAndSum", lobby.getCurrentWord())));
+                    if(lobby.getPlayers().size()<=1){
+                        lobby.setStatus(LobbyStatus.PENDING_LOBBY);
+                        return;
+                    }
+                    lobbyService.emitWordBasedOnWordCount(lobby);
+                }
+            } catch (Exception e) {
+                System.out.println("Error emitting word: " + e.getMessage());
+            }
+        }
+
+        List<Player> players = new ArrayList<>(lobby.getPlayers().values());
+        List<PlayerDTO> playerDTOs = players.stream()
+                .map(p -> new PlayerDTO(p.getUsername(), p.isAuthorized(), p.getAvatar(), p.getRole(), p.getScore(),
+                        p.getScorePerTurn(), p.isAnswered()))
+                .toList();
+        MsgDTO msgDTO = new MsgDTO("Leaved lobby", "notify", player.getAvatar(), false,
+                player.getUsername(), player.getSid());
+
+        try {
+            lobbyEvent.publishEvent(objectMapper.writeValueAsString(new DataWraperDTO<>("message", msgDTO)));
+            lobbyEvent.publishEvent(objectMapper.writeValueAsString(new DataWraperDTO<>("playerList", playerDTOs)));
+        } catch (Exception e) {
+            System.err.println("Error publishing event: " + e.getMessage());
+        }
     }
 
     public boolean isGameState(String msg) {
         return msg.contains("type\":\"gameState\"");
     }
 
-    
-
     private boolean isDrawingEvent(String msg) {
         return msg.contains("type\":\"draw\"");
     }
+
     private boolean isEditEvent(String msg) {
         return msg.contains("type\":\"edit\"");
     }
+
     private Map<String, Object> extractActionAndData(String payload) {
         try {
             return objectMapper.readValue(payload, Map.class);
@@ -208,14 +274,14 @@ public class ReactiveWebSocketHandler implements WebSocketHandler {
                 JsonNode root = objectMapper.readTree(msg);
                 String type = root.get("type").asText();
                 JsonNode data = root.get("data");
-    
+
                 if (!(data instanceof ObjectNode)) {
                     System.err.println("Expected ObjectNode but got: " + data.getClass().getSimpleName());
                     return msg; // Return the original message if the type is incorrect
                 }
-    
+
                 ObjectNode dataNode = (ObjectNode) data;
-    
+
                 switch (type) {
                     case "wordsToChoose" -> {
                         if (dataNode.get("id").asText().equals(sid)) {

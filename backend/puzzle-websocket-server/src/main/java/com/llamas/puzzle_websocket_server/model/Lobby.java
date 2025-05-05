@@ -37,4 +37,21 @@ public class Lobby extends LobbySetting{
         super(8, 60, 3, 3, Language.ENGLISH, GameMode.NORMAL, false, 2,false);
         this.id = id;
     }
+    @Override
+    public String toString() {
+        return "Lobby{" +
+                "id='" + id + '\'' +
+                ", sink=" + sink +
+                ", currentRound=" + currentRound +
+                ", status=" + status +
+                ", players=" + players +
+                ", drawerQueue=" + drawerQueue +
+                ", words=" + words +
+                ", customWords=" + customWords +
+                ", currentWord='" + currentWord + '\'' +
+                ", hintWord='" + hintWord + '\'' +
+                ", sessionTemporaryPoints=" + sessionTemporaryPoints +
+                '}';
+    }
+    
 }

@@ -38,7 +38,7 @@ public class CommandFactory {
             case CHOOSE_WORD:
                 return new ChooseWordCommand(lobbyManager, objectMapper);
             case CREATE_PRIVATE_LOBBY:
-                return new CreatePrivateLobbyCommand(lobbyManager);
+                return new CreatePrivateLobbyCommand(lobbyManager, objectMapper);
             case JOIN_PUBLIC_LOBBY:
                 return new JoinPublicLobbyCommand(lobbyManager, lobbyService, objectMapper);
             case JOIN_PRIVATE_LOBBY:
@@ -49,6 +49,8 @@ public class CommandFactory {
                 return new EditCommand(strokeStackManager, objectMapper);
             case GAME_STATE:
                 return new GameStateCommand(strokeStackManager, objectMapper, lobbyManager);
+            case PLAY_AGAIN:
+                return new PlayAgainCommand(lobbyManager, lobbyService, objectMapper);
             default:
                 throw new IllegalArgumentException("Unknown action: " + action);
         }

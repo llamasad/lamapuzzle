@@ -1,6 +1,21 @@
 spring:
   application:
     name: puzzle-resource-server
+  datasource:
+    scheme: classpath:schema.sql
+    data: classpath:data.sql
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5433/lamapuz
+    username: lama
+    password: secret
+  jpa:
+    hibernate:
+      ddl-auto: create
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: always
+
 
 scheme: http
 hostname: localhost

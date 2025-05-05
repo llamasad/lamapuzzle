@@ -6,8 +6,10 @@ import java.util.List;
 import org.springframework.web.reactive.socket.WebSocketSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.llamas.puzzle_websocket_server.command.Command;
 import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import com.llamas.puzzle_websocket_server.model.MsgDTO;
 import com.llamas.puzzle_websocket_server.model.Player;
 import com.llamas.puzzle_websocket_server.model.PlayerDTO;
@@ -17,6 +19,7 @@ import com.llamas.puzzle_websocket_server.service.LobbyManager;
 import com.llamas.puzzle_websocket_server.service.LobbyService;
 import com.llamas.puzzle_websocket_server.service.StrokeStackManager;
 
+import com.llamas.puzzle_websocket_server.model.LobbyStatus;
 import reactor.core.publisher.Mono;
 
 public class JoinPrivateLobbyCommand implements Command<PlayerDTO> {
@@ -64,6 +67,10 @@ public class JoinPrivateLobbyCommand implements Command<PlayerDTO> {
             lobby.getSink().tryEmitNext(objectMapper.writeValueAsString(dataWraperPlayerDTO));
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        if (lobby.getStatus().equals(LobbyStatus.PENDING_LOBBY) && lobby.getPlayers().size() > 1) {
+            lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
+            lobbyService.emitWordBasedOnWordCount(lobby);
         }
         return Mono.empty();
     }

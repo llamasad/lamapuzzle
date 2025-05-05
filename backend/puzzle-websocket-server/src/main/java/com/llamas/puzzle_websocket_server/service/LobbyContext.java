@@ -1,5 +1,7 @@
 package com.llamas.puzzle_websocket_server.service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -8,8 +10,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.llamas.puzzle_websocket_server.model.DataWraperDTO;
 import com.llamas.puzzle_websocket_server.model.Lobby;
 import com.llamas.puzzle_websocket_server.model.LobbyStatus;
+import com.llamas.puzzle_websocket_server.model.Player;
+import com.llamas.puzzle_websocket_server.model.PlayerDTO;
 
 import lombok.Data;
+import com.llamas.puzzle_websocket_server.model.PlayerDTO;
+
+import com.llamas.puzzle_websocket_server.service.LobbyService;
 
 @Data
 public class LobbyContext {
@@ -30,9 +37,6 @@ public class LobbyContext {
     public void startRound() {
         lobby.setStatus(LobbyStatus.IS_PLAYING);
         turnStartTime = System.currentTimeMillis() / 1000;
-        if (lobby.getDrawerQueue().isEmpty()) {
-            lobby.setCurrentRound(lobby.getCurrentRound() + 1);
-        }
         scheduleEndOfRound();
     }
 
@@ -48,14 +52,31 @@ public class LobbyContext {
             System.out.println("Round ended");
             lobby.setStatus(LobbyStatus.ROUND_IN_PROGRESS);
             try {
-                if (lobby.getCurrentRound() < lobby.getMaxRound()) {
-                    System.out.println("word reveal:" + lobby.getCurrentWord());
+                if (lobby.getCurrentRound() >= lobby.getMaxRound() && lobby.getDrawerQueue().isEmpty()) {
+                    lobby.setStatus(LobbyStatus.FINISHED);
+                    lobbyService.flushLobby(lobby);
+                 
+
+                } else {
+
+                    List<Player> players = new ArrayList<>(lobby.getPlayers().values());
+                    List<PlayerDTO> playerDTOs = players.stream()
+                            .map(p -> new PlayerDTO(p.getUsername(), p.isAuthorized(), p.getAvatar(), p.getRole(),
+                                    p.getScore(),
+                                    p.getScorePerTurn(), p.isAnswered()))
+                            .toList();
+                    lobbyService.refreshLobbyEachTurn(lobby);
+
+                    lobby.getSink().tryEmitNext(
+                            objectMapper.writeValueAsString(new DataWraperDTO<>("playerList", playerDTOs)));
                     lobby.getSink().tryEmitNext(objectMapper
                             .writeValueAsString(new DataWraperDTO<>("revealAndSum", lobby.getCurrentWord())));
+
+                    if(lobby.getPlayers().size() <= 1) {
+                        lobby.setStatus(LobbyStatus.PENDING_LOBBY);
+                    }
+                    
                     lobbyService.emitWordBasedOnWordCount(lobby);
-                } else {
-                    lobbyService.refreshLobbyEachRound(lobby);
-                    lobby.setStatus(LobbyStatus.FINISHED);
                 }
             } catch (Exception e) {
                 System.out.println("Error emitting word: " + e.getMessage());

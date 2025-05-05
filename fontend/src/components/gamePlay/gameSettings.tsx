@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import LinkIcon from "../svgs/linkIcon";
 import { useWebSocket } from "../provider/websocketProvider";
 import { Status } from "@/app/page";
 
-export default function GameSettings({setGameStatus}:{setGameStatus:(status:Status)=>void}) {
+export default function GameSettings({setGameStatus,
+  privateLobbyId
+}:{setGameStatus:(status:Status)=>void,privateLobbyId:string|null}) {
   
   const {ws}= useWebSocket();
   const [players, setPlayers] = useState(8);
@@ -18,15 +19,7 @@ export default function GameSettings({setGameStatus}:{setGameStatus:(status:Stat
   const [useCustomWordsOnly, setUseCustomWordsOnly] = useState(false);
   const [isPrivate, setIsPrivate] = useState(true);
   
-  const [inviteURL, setInviteURL] = useState(``);
 
-  useEffect(() => {
-    if (ws) {
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-      const url = new URL(ws.url);
-      setInviteURL(`${baseUrl}/${url.pathname}`);
-    }
-  }, [ws]);
 
 
   const handleStartGame = () => {
@@ -174,7 +167,11 @@ export default function GameSettings({setGameStatus}:{setGameStatus:(status:Stat
       </div>
       <div className="flex justify-between gap-2">
         <button onClick={handleStartGame} style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }} className="w-2/3 p-3 cursor-pointer bg-green-500 text-white font-semibold text-lg">Start!</button>
-        <button  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}  className="w-1/3 p-3 bg-blue-500 cursor-pointer font-semibold text-lg flex text-white pl-12 items-center gap-2">
+        <button onClick={()=>{
+          let inviteLink=`${process.env.NEXT_PUBLIC_BASE_URL}/?invite=${privateLobbyId}`;
+          navigator.clipboard.writeText(inviteLink);
+
+        }}  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}  className="w-1/3 p-3 bg-blue-500 cursor-pointer font-semibold text-lg flex text-white pl-12 items-center gap-2">
          <LinkIcon width={22} height={22} />
           Invite Friends
         </button>

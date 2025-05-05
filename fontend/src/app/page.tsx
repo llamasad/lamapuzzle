@@ -24,6 +24,7 @@ export default function Page() {
   const [gameStatus, setGameStatus] = useState<Status>("landing");
   const [isLoading, setIsLoading] = useState(false);
   const GameComponent = GameUI[gameStatus];
+  const [privateLobbyId, setPrivateLobbyId] = useState<string | null>(null);
 
   return (
     <div className="pt-19">
@@ -35,6 +36,8 @@ export default function Page() {
           setGameStatus={setGameStatus}
           isLoading={isLoading}
           setIsLoading={setIsLoading}
+          privateLobbyId={privateLobbyId}
+          setPrivateLobbyId={setPrivateLobbyId}
         />
       </WebSocketProvider>
     </div>

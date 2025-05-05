@@ -54,6 +54,8 @@ export default function DrawingPlane({
   const [lines, setLines] = useState<LineType[]>([]);
   const [strokeWidth, setStrokeWidth] = useState(6);
   const [backgroundImage, setBackgroundImage] = useState<any>(null);
+  const [revealWord, setRevealWord] = useState("");
+  const [isGameEnd,setIsGameEnd] = useState(false);
   const isDrawing = useRef(false);
   const stageRef = useRef<any>(null);
   const backgroundImageRef = useRef<any>(null);
@@ -144,15 +146,14 @@ export default function DrawingPlane({
             }
           }
         } else if (payload.type === "wordsToChoose") {
-          console.log("wordsToChoose", payload.data);
+          setIsGameEnd(false);
+
           if (payload.data.words && payload.data.words.length > 0) {
             timeOutId = setTimeout(() => {
               setWordsToChoose(payload.data.words);
               setIsRevealAndSum(false);
               setOnDrawRole(true);
               setWord((currentWord) => {
-                console.log("test2", currentWord);
-
                 if (currentWord === "Waiting") {
                   return "";
                 }
@@ -160,8 +161,8 @@ export default function DrawingPlane({
               });
               timeOutId2 = setTimeout(() => {
                 setWord((currentWord) => {
-                  console.log("test3", currentWord);
-
+                  console.log("setTimeOut");
+                  console.log(currentWord);
                   let word =
                     payload.data.words[
                       Math.floor(Math.random() * payload.data.words.length)
@@ -195,6 +196,7 @@ export default function DrawingPlane({
           setWordsToChoose([]);
           setWord("Waiting");
           refreshDrawing();
+          setRevealWord(payload.data);
           setIsRevealAndSum(true);
         } else if (payload.type === "edit") {
           if (payload.data === "UNDO") {
@@ -203,7 +205,6 @@ export default function DrawingPlane({
             redoFunctionRef.current();
           }
         } else if (payload.type === "gameState") {
-          console.log("gameState", payload.data);
           const initGameState = async () => {
             if (payload.data.strokeStack) {
               if (payload.data.strokeStack.undoStack.length > 0) {
@@ -221,6 +222,9 @@ export default function DrawingPlane({
             }
           };
           initGameState();
+        }else if(payload.type === "flush"){
+          setIsGameEnd(true);
+
         }
       };
 
@@ -246,12 +250,11 @@ export default function DrawingPlane({
       item.toolType = item.toolType.toLowerCase();
 
       setUndoStack((undoStack) => {
-        console.log(linesRef.current.length, backgroundImageRef.current);
         if (
           linesRef.current.length <= 0 &&
           backgroundImageRef.current === null
         ) {
-          return undoStack;
+          return [{ lines: [], bg: null }];
         }
         return [
           ...undoStack,
@@ -306,6 +309,23 @@ export default function DrawingPlane({
     }
   };
 
+  const handlePlayAgain= ()=>{
+    refreshDrawing();
+    ws &&
+      ws.send(
+        JSON.stringify({
+          action: "PLAY_AGAIN",
+          data: "PLAY_AGAIN",
+        })
+      );
+    }
+
+  const handleBackToMenu= ()=>{
+    //redirect to /
+    window.location.href = "/";
+
+  }
+
   const handleGameStateToStateRedo = async (
     state: Array<{
       toolType: string;
@@ -316,16 +336,17 @@ export default function DrawingPlane({
   ) => {
     const bg = backgroundImageRef.current;
     const lines = linesRef.current;
-    console.log("state", state);
+
     if (state.length > 0) {
       const nextState = state[state.length - 1];
       nextState.toolType = nextState.toolType.toLowerCase();
+
       if (nextState.toolType === "pen") {
         const flatArray = nextState.position
           .slice(0, -1)
           .flatMap(({ x, y }) => [x, y]);
         setLines((prevLines) => {
-          linesRef.current = [
+          const updatedLines = [
             ...prevLines,
             {
               tool: nextState.toolType as ToolName,
@@ -335,15 +356,8 @@ export default function DrawingPlane({
             },
           ];
 
-          return [
-            ...prevLines,
-            {
-              tool: nextState.toolType as ToolName,
-              points: flatArray,
-              color: nextState.color,
-              strokeWidth: nextState.thickness,
-            },
-          ];
+          linesRef.current = updatedLines; // Update the ref immediately
+          return updatedLines;
         });
       } else if (nextState.toolType === "eraser") {
         const flatArray = nextState.position
@@ -378,6 +392,8 @@ export default function DrawingPlane({
           nextState.color
         );
       }
+      await new Promise((res) => setTimeout(res, 0));
+
       setRedoStack((redoStack) => {
         if (
           linesRef.current.length < 0 &&
@@ -386,13 +402,13 @@ export default function DrawingPlane({
           return redoStack;
         }
         return [
-          ...redoStack,
           { lines: linesRef.current, bg: backgroundImageRef.current },
+          ...redoStack,
         ];
       });
-      await handleGameStateToStateRedo(state.slice(0, state.length - 1));
-
       await new Promise((res) => setTimeout(res, 100));
+
+      await handleGameStateToStateRedo(state.slice(0, state.length - 1));
     }
     setLines(lines);
     setBackgroundImage(bg);
@@ -757,11 +773,13 @@ export default function DrawingPlane({
             players.length > 0 &&
             isRevealAndSum && (
               <div className="mx-auto w-8/10 pl-8">
+                <div className="text-center ml-[-36px] mb-6 font-medium text-white text-xl">
+                  {revealWord}
+                </div>
                 <div className="flex gap-x-16 flex-wrap">
                   {players
                     .sort((a, b) => b.scorePerTurn - a.scorePerTurn)
                     .map((player, index) => {
-                      console.log(player);
                       return (
                         <div
                           key={index}
@@ -787,7 +805,7 @@ export default function DrawingPlane({
                           <div
                             className={
                               "leading-8 pl-4 " +
-                              (player.isGuessed ? "text-green-500" : "")
+                              (player.answered ? "text-green-500" : "")
                             }
                           >
                             +{player.scorePerTurn ? player.scorePerTurn : 0}
@@ -796,6 +814,62 @@ export default function DrawingPlane({
                       );
                     })}
                 </div>
+              </div>
+            )}
+        </div>
+
+        <div
+          className={`absolute inset-0 bg-black/50 flex items-center gap-4 justify-center transition-transform duration-400 ${
+            isGameEnd
+              ? "translate-y-0 opacity-100 z-30"
+              : "-translate-y-40 opacity-0"
+          }`}
+        >
+          {isGameEnd&&(
+              <div className="mx-auto w-8/10 pl-8">
+                <div className="flex gap-x-16 flex-wrap">
+                  {players
+                    .sort((a, b) => b.scorePerTurn - a.scorePerTurn)
+                    .map((player, index) => {
+                      return (
+                        <div
+                          key={index}
+                          className="flex justify-between mb-1 items-center w-4/10 text-white"
+                        >
+                          <div
+                            className={
+                              "text-2xl font-bold flex flex-1 min-w-0  " +
+                              fonts.nguechNgoacFont
+                            }
+                          >
+                            <Image2
+                              className="mr-2"
+                              src={player.avatar || "/test"}
+                              alt=""
+                              width={58}
+                              height={58}
+                            />
+                            <div className="truncate leading-14">
+                              {player.username}
+                            </div>
+                          </div>
+                          <div
+                            className={
+                              "leading-8 pl-4 "
+                            }
+                          >
+                            {player.score ? player.score : 0}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+               <div className="flex justify-between items-center mt-4 text-white">
+                 <div onClick={handlePlayAgain} className="bg-green-400 px-2.5 py-1.5 cursor-pointer">Play again !</div>
+                 <div onClick={handleBackToMenu} className="underline text-gray-200 cursor-pointer">back to menu</div>
+
+                
+               </div>
               </div>
             )}
         </div>

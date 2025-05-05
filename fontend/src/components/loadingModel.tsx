@@ -3,7 +3,7 @@ import fonts from "@/assets/fonts";
 export default function LoadingModel() {
   return (
     <div
-      className="absolute inset-0 z-10 bg-black/50 flex items-center justify-center"
+      className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center"
     >
       <div
         className={
