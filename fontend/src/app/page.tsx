@@ -8,8 +8,11 @@ import GameStart from "@/components/gameStart";
 import LoadingModel from "@/components/loadingModel";
 import { useSearchParams } from "next/navigation";
 import Invite from "@/components/invite";
+import { User, UserService } from "@/service/user.service";
+import { UserContext } from "@/contexts/userContext";
+import Authentication from "@/components/auth/authentication";
 
-export type Status = "playing" | "end" | "landing"| "lobby"; 
+export type Status = "playing" | "end" | "landing" | "lobby";
 
 const GameUI = {
   playing: GamePlay,
@@ -20,26 +23,39 @@ const GameUI = {
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const lobbyId = searchParams.get("invite")||"";
+  const lobbyId = searchParams.get("invite") || "";
   const [gameStatus, setGameStatus] = useState<Status>("landing");
   const [isLoading, setIsLoading] = useState(false);
   const GameComponent = GameUI[gameStatus];
   const [privateLobbyId, setPrivateLobbyId] = useState<string | null>(null);
+  const [user, setUser] = useState(User.ANONYMOUS);
+  const userService = new UserService(user, setUser);
 
   return (
-    <div className="pt-19">
-      <WebSocketProvider query={lobbyId}>
-        {isLoading && <LoadingModel />}
-        {lobbyId && <Invite lobbyId={lobbyId} setGameStatus={setGameStatus} setIsLoading={setIsLoading} />}
-        <GameComponent
-          gameStatus={gameStatus}
-          setGameStatus={setGameStatus}
-          isLoading={isLoading}
-          setIsLoading={setIsLoading}
-          privateLobbyId={privateLobbyId}
-          setPrivateLobbyId={setPrivateLobbyId}
-        />
-      </WebSocketProvider>
-    </div>
+    <UserContext.Provider value={user}>
+      <Authentication
+       
+      />
+      <div className="pt-19">
+        <WebSocketProvider query={lobbyId}>
+          {isLoading && <LoadingModel />}
+          {lobbyId && (
+            <Invite
+              lobbyId={lobbyId}
+              setGameStatus={setGameStatus}
+              setIsLoading={setIsLoading}
+            />
+          )}
+          <GameComponent
+            gameStatus={gameStatus}
+            setGameStatus={setGameStatus}
+            isLoading={isLoading}
+            setIsLoading={setIsLoading}
+            privateLobbyId={privateLobbyId}
+            setPrivateLobbyId={setPrivateLobbyId}
+          />
+        </WebSocketProvider>
+      </div>
+    </UserContext.Provider>
   );
 }

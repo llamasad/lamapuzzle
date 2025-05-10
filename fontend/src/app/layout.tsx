@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -22,6 +23,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en">
       <body>
@@ -29,7 +31,7 @@ export default function RootLayout({
           className="min-h-screen w-screen bg-cover bg-center"
           style={{
             backgroundImage: "url('/background.png')",
-            backgroundSize: "25%", // Adjusted to make the image smaller
+            backgroundSize: "25%",
             border: "none",
           }}
         >

@@ -8,6 +8,7 @@ const images = {
     pencilIcon:require('./pencilIcon.png').default,
     eraeseIcon:require('./eraseIcon.png').default,
     pencil:require('./pencil.png').default,
+    login:require('./login.png').default,
 }
 
 export default images;

@@ -1,6 +1,6 @@
 
 scheme: https
-hostname: llamasad.dev
+hostname: nguechngoac.io
 reverse-proxy-port: 7080
 reverse-proxy-uri: ${scheme}://${hostname}
 authorization-server-prefix: /auth

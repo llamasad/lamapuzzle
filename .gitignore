@@ -12,3 +12,4 @@ compose-*.yml
 compose-*.yml''
 keycloak/import/lamapuz-realm.json''
 build.sh
+/keycloak/import/lamapuz-realm.json

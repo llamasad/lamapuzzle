@@ -22,7 +22,7 @@ hostname: localhost
 reverse-proxy-port: 7080
 reverse-proxy-uri: ${scheme}://${hostname}:${reverse-proxy-port}
 authorization-server-prefix: /auth
-issuer: https://llamasad.dev/auth/realms/lamapuz
+issuer: https://nguechngoac.io/auth/realms/lamapuz
 username-claim-json-path: $.preferred_username
 authorities-json-path: $.realm_access.roles
 resource-server-port: 7084
